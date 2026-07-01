@@ -1,0 +1,37 @@
+{
+  "name": "expense-tracker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A simple, professional expense tracker — Nuxt 3 + Prisma + PostgreSQL proof of concept.",
+  "scripts": {
+    "dev": "nuxt dev",
+    "build": "nuxt build",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare",
+    "typecheck": "nuxt typecheck",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:seed": "prisma db seed",
+    "db:reset": "prisma migrate reset",
+    "db:studio": "prisma studio"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "6.19.3",
+    "nuxt": "3.21.8",
+    "vue": "3.5.39",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@nuxtjs/tailwindcss": "6.14.0",
+    "@types/node": "^22",
+    "prisma": "6.19.3",
+    "tailwindcss": "3.4.19",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3",
+    "vue-tsc": "^2.1.10"
+  }
+}

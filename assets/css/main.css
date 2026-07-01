@@ -1,0 +1,95 @@
+/* Tailwind's three layers. `base` = element resets, `components` = our reusable
+   classes, `utilities` = the huge library of `p-4`, `flex`, etc. Order matters:
+   utilities come last so they can always override components. */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ------------------------------------------------------------------ *
+ * Base — element-level defaults for the whole app
+ * ------------------------------------------------------------------ */
+@layer base {
+  html {
+    color-scheme: light;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    @apply bg-paper text-ink font-sans;
+  }
+
+  /* Give keyboard users a clear, on-brand focus ring everywhere. */
+  :focus-visible {
+    @apply outline-none ring-2 ring-brass ring-offset-2 ring-offset-paper;
+  }
+
+  /* Respect people who ask their OS for less motion. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+    }
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * Components — small, reusable building blocks used across pages
+ * ------------------------------------------------------------------ */
+@layer components {
+  /* Tabular figures: makes every digit the same width so stacked amounts
+     line up perfectly, like a real ledger. Used on all money + dates. */
+  .tnum {
+    font-feature-settings: 'tnum' 1, 'lnum' 1;
+    font-variant-numeric: tabular-nums lining-nums;
+  }
+
+  /* The accounting "double underline" — used under totals and the header to
+     echo the double rule a bookkeeper draws beneath a final sum. */
+  .double-rule {
+    border-bottom: 3px double theme('colors.rule');
+  }
+
+  /* A raised content surface. */
+  .card {
+    @apply bg-panel border border-rule/70 rounded-xl shadow-card;
+  }
+
+  /* Small uppercase label / eyebrow used above sections and on fields. */
+  .eyebrow {
+    @apply text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-ink-soft;
+  }
+
+  /* --- Buttons ------------------------------------------------------ */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5
+      text-sm font-semibold transition-colors duration-150
+      disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply bg-pine text-white hover:bg-pine-dark;
+  }
+  .btn-ghost {
+    @apply border border-rule bg-panel text-ink hover:bg-ledger;
+  }
+  .btn-danger {
+    @apply bg-clay text-white hover:brightness-90;
+  }
+
+  /* --- Form fields -------------------------------------------------- */
+  .label {
+    @apply mb-1.5 block text-sm font-medium text-ink;
+  }
+  .field {
+    @apply w-full rounded-lg border border-rule bg-panel px-3 py-2.5 text-sm text-ink
+      placeholder:text-ink-soft/60
+      focus:border-pine focus:outline-none focus:ring-2 focus:ring-pine/25;
+  }
+  /* Slightly different treatment for native selects/date inputs. */
+  .field-invalid {
+    @apply border-clay focus:border-clay focus:ring-clay/25;
+  }
+}

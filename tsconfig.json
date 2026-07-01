@@ -1,0 +1,6 @@
+{
+  // Nuxt generates a full TypeScript config for us in .nuxt/tsconfig.json
+  // (with all the right paths and auto-imports). We just extend it.
+  // "strict" mode is already enabled inside that generated config.
+  "extends": "./.nuxt/tsconfig.json"
+}

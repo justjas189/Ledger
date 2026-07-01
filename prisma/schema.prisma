@@ -1,0 +1,64 @@
+// Prisma schema — the single source of truth for our database.
+// From this file Prisma does two jobs:
+//   1. Generates a fully typed database client (`@prisma/client`) we import
+//      in our server code, so every query is checked by TypeScript.
+//   2. Generates SQL migrations that create/update the real tables.
+//
+// Run `npx prisma migrate dev` after editing this file to apply changes.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Category
+// ---------------------------------------------------------------------------
+// Why a TABLE instead of a Prisma enum?
+//   • Extensible: you can add/rename categories from data (or later, a UI)
+//     WITHOUT writing a new migration — enums would need a schema change.
+//   • Richer: a table can carry extra fields. We store a `color` per category
+//     so the dashboard chart and pills stay perfectly consistent.
+//   • Teaches relations: this is the classic one-to-many (one Category has
+//     many Expenses) that you'll meet in almost every real app.
+model Category {
+  id        String    @id @default(cuid()) // collision-resistant string id
+  name      String    @unique // e.g. "Groceries"
+  color     String // hex code used by the UI, e.g. "#1E5A48"
+  icon      String? // optional single-glyph label, e.g. "🛒"
+  createdAt DateTime  @default(now())
+  expenses  Expense[] // back-relation: all expenses in this category
+
+  @@map("categories") // real table name in Postgres
+}
+
+// ---------------------------------------------------------------------------
+// Expense
+// ---------------------------------------------------------------------------
+model Expense {
+  id          String   @id @default(cuid())
+  description String // what the money was spent on
+  // Money is stored as Decimal, NEVER as a float. Floats (0.1 + 0.2 problems)
+  // silently corrupt currency; Decimal(10,2) keeps exact cents up to
+  // 99,999,999.99.
+  amount      Decimal  @db.Decimal(10, 2)
+  date        DateTime // the day the expense occurred (chosen by the user)
+
+  // The relation to Category. `categoryId` is the actual foreign-key column;
+  // `category` is the convenient object Prisma lets us include in queries.
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+
+  createdAt DateTime @default(now()) // row insert time (auditing)
+  updatedAt DateTime @updatedAt // auto-updates on every edit
+
+  // Indexes speed up the queries we actually run: sorting/filtering by date
+  // and filtering by category.
+  @@index([date])
+  @@index([categoryId])
+  @@map("expenses")
+}
