@@ -1,6 +1,8 @@
 <script setup lang="ts">
 // The global top bar: wordmark on the left, primary navigation on the right.
 // It sits in the default layout, so it appears on every page.
+import { Landmark } from 'lucide-vue-next'
+
 const route = useRoute()
 const { formatMonthLabel } = useFormatters()
 
@@ -16,14 +18,17 @@ const isActive = (to: string) =>
 </script>
 
 <template>
-  <header class="sticky top-0 z-40 bg-paper/85 backdrop-blur">
+  <header class="sticky top-0 z-40 bg-surface/85 backdrop-blur">
     <div
       class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4 double-rule sm:px-6"
     >
       <!-- Wordmark -->
-      <NuxtLink to="/" class="group flex items-baseline gap-2">
+      <NuxtLink to="/" class="group flex items-center gap-2">
+        <span class="grid h-8 w-8 place-items-center rounded-lg bg-ink text-white">
+          <Landmark class="h-4 w-4" aria-hidden="true" />
+        </span>
         <span
-          class="font-display text-2xl font-semibold leading-none tracking-tight text-pine"
+          class="font-display text-xl font-semibold leading-none tracking-tight text-ink"
         >
           Ledger
         </span>
@@ -48,8 +53,8 @@ const isActive = (to: string) =>
           class="rounded-lg px-3 py-2 text-sm font-medium transition-colors"
           :class="
             isActive(link.to)
-              ? 'bg-ledger text-pine'
-              : 'text-ink-soft hover:bg-ledger/60 hover:text-ink'
+              ? 'bg-subtle text-ink'
+              : 'text-ink-soft hover:bg-subtle/60 hover:text-ink'
           "
         >
           {{ link.label }}

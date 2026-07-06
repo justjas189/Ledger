@@ -54,7 +54,7 @@ const arcs = computed(() => {
           :cy="center"
           :r="radius"
           fill="none"
-          stroke="#E8EEDF"
+          stroke="#F1F5F9"
           :stroke-width="thickness"
         />
         <circle

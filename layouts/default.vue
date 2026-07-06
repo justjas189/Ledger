@@ -13,9 +13,9 @@
     </main>
 
     <footer class="mx-auto w-full max-w-6xl px-4 pb-8 sm:px-6">
-      <div class="border-t border-rule pt-4 text-center">
+      <div class="border-t border-edge pt-4 text-center">
         <p class="font-mono text-xs text-ink-soft">
-          Ledger · a Nuxt&nbsp;3 + Prisma proof of concept
+          Ledger · personal finance, kept in order
         </p>
       </div>
     </footer>

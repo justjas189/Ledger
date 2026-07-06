@@ -11,14 +11,17 @@ import { PrismaClient, Prisma } from '@prisma/client'
 
 const prisma = new PrismaClient()
 
-// Each category carries the colour the UI uses for its chart slice + pill.
+// Each category carries the colour the UI uses for its chart slice + pill,
+// plus a kebab-case Lucide icon name resolved by composables/useCategoryIcons.
+// Colours are muted, desaturated tones that sit inside the app's slate /
+// teal / crimson palette.
 const CATEGORIES = [
-  { name: 'Groceries', color: '#1E5A48', icon: '🛒' },
-  { name: 'Dining', color: '#B7892F', icon: '🍽️' },
-  { name: 'Transport', color: '#3E6C8E', icon: '🚌' },
-  { name: 'Utilities', color: '#6E8B3D', icon: '💡' },
-  { name: 'Entertainment', color: '#7A5B8E', icon: '🎬' },
-  { name: 'Shopping', color: '#B23A2E', icon: '🛍️' }
+  { name: 'Groceries', color: '#0F766E', icon: 'shopping-cart' },
+  { name: 'Dining', color: '#A16207', icon: 'utensils' },
+  { name: 'Transport', color: '#33608D', icon: 'bus' },
+  { name: 'Utilities', color: '#475569', icon: 'lightbulb' },
+  { name: 'Entertainment', color: '#6D5A8E', icon: 'clapperboard' },
+  { name: 'Shopping', color: '#9F1239', icon: 'shopping-bag' }
 ] as const
 
 // Believable descriptions + amount ranges (in dollars) per category.
@@ -48,7 +51,7 @@ function monthBucket(base: Date, offset: number, count: number) {
 }
 
 async function main() {
-  console.log('🌱  Seeding database…')
+  console.log('Seeding database...')
 
   // Start clean so re-running the seed is always predictable.
   // Delete expenses first — they reference categories (foreign key).
@@ -61,7 +64,7 @@ async function main() {
     const created = await prisma.category.create({ data: c })
     idByName[c.name] = created.id
   }
-  console.log(`   • ${CATEGORIES.length} categories`)
+  console.log(`  - ${CATEGORIES.length} categories`)
 
   // Spread sample expenses across the current month and the two before it.
   const now = new Date()
@@ -88,13 +91,13 @@ async function main() {
   }
 
   await prisma.expense.createMany({ data })
-  console.log(`   • ${data.length} expenses`)
-  console.log('✅  Seed complete.')
+  console.log(`  - ${data.length} expenses`)
+  console.log('Seed complete.')
 }
 
 main()
   .catch((e) => {
-    console.error('❌  Seed failed:', e)
+    console.error('Seed failed:', e)
     process.exit(1)
   })
   .finally(async () => {

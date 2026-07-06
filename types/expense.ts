@@ -53,6 +53,22 @@ export interface CategoryBreakdown {
   count: number
 }
 
+/** One day's total spend, for the 30-day trend line. */
+export interface DailyTrendPoint {
+  /** Local calendar day as "YYYY-MM-DD". */
+  date: string
+  total: number
+}
+
+/** This month's spend vs the configured budget, per category. */
+export interface BudgetComparison {
+  categoryId: string
+  name: string
+  color: string
+  spent: number
+  budget: number
+}
+
 /** Everything the dashboard needs, in one request. */
 export interface StatsResponse {
   currency: string
@@ -63,7 +79,17 @@ export interface StatsResponse {
   thisMonthCount: number
   averageExpense: number
   allTimeTotal: number
+  /** Configured monthly income (see server/utils/budgets.ts). */
+  monthlyIncome: number
+  /** Income minus this month's spend. */
+  balance: number
+  /** (income - spend) / income, as a percentage. */
+  savingsRate: number
   topCategory: CategoryBreakdown | null
   breakdown: CategoryBreakdown[]
+  /** Daily totals for the last 30 days, oldest first, zero-filled. */
+  dailyTrend: DailyTrendPoint[]
+  /** This month's spend vs budget for every category. */
+  budgets: BudgetComparison[]
   recent: ExpenseDTO[]
 }

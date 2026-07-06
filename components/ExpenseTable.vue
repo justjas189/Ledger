@@ -1,10 +1,10 @@
 <script setup lang="ts">
 // The expenses ledger — the visual signature of the app.
-// Styled like a page from an accountant's green "greenbar" ledger book:
-// ruled rows, a running line number down the margin, and every figure set in
+// Ruled rows, a running line number down the margin, and every figure set in
 // tabular monospace so the amounts stack in a perfect column.
 //
 // Responsive: a real <table> on desktop, stacked cards on phones.
+import { Pencil, Trash2 } from 'lucide-vue-next'
 import type { ExpenseDTO } from '~/types/expense'
 
 const props = withDefaults(
@@ -29,12 +29,12 @@ const showEmpty = computed(() => !props.loading && props.expenses.length === 0)
 <template>
   <div class="card overflow-hidden">
     <!-- ── Loading skeleton ────────────────────────────────────────── -->
-    <div v-if="showSkeleton" class="divide-y divide-rule">
+    <div v-if="showSkeleton" class="divide-y divide-edge">
       <div v-for="n in 6" :key="n" class="flex items-center gap-4 px-5 py-4">
-        <div class="h-3 w-6 animate-pulse rounded bg-ledger" />
-        <div class="h-3 w-24 animate-pulse rounded bg-ledger" />
-        <div class="h-3 flex-1 animate-pulse rounded bg-ledger" />
-        <div class="h-3 w-20 animate-pulse rounded bg-ledger" />
+        <div class="h-3 w-6 animate-pulse rounded bg-subtle" />
+        <div class="h-3 w-24 animate-pulse rounded bg-subtle" />
+        <div class="h-3 flex-1 animate-pulse rounded bg-subtle" />
+        <div class="h-3 w-20 animate-pulse rounded bg-subtle" />
       </div>
     </div>
 
@@ -68,7 +68,7 @@ const showEmpty = computed(() => !props.loading && props.expenses.length === 0)
           <tr
             v-for="(e, i) in expenses"
             :key="e.id"
-            class="group border-b border-rule/70 transition-colors last:border-0 even:bg-ledger/50 hover:bg-ledger"
+            class="group border-b border-edge transition-colors last:border-0 even:bg-subtle/50 hover:bg-subtle"
           >
             <!-- running line number, like a ledger margin -->
             <td class="px-3 py-3 text-right align-middle font-mono text-xs text-ink-soft tnum">
@@ -98,19 +98,19 @@ const showEmpty = computed(() => !props.loading && props.expenses.length === 0)
               >
                 <button
                   type="button"
-                  class="grid h-8 w-8 place-items-center rounded-lg text-ink-soft hover:bg-panel hover:text-pine"
+                  class="grid h-8 w-8 place-items-center rounded-lg text-ink-soft hover:bg-panel hover:text-ink"
                   :aria-label="`Edit ${e.description}`"
                   @click="emit('edit', e)"
                 >
-                  ✎
+                  <Pencil class="h-4 w-4" aria-hidden="true" />
                 </button>
                 <button
                   type="button"
-                  class="grid h-8 w-8 place-items-center rounded-lg text-ink-soft hover:bg-panel hover:text-clay"
+                  class="grid h-8 w-8 place-items-center rounded-lg text-ink-soft hover:bg-panel hover:text-negative"
                   :aria-label="`Delete ${e.description}`"
                   @click="emit('delete', e)"
                 >
-                  🗑
+                  <Trash2 class="h-4 w-4" aria-hidden="true" />
                 </button>
               </div>
             </td>
@@ -119,11 +119,11 @@ const showEmpty = computed(() => !props.loading && props.expenses.length === 0)
       </table>
 
       <!-- Mobile: stacked cards -->
-      <ul class="divide-y divide-rule md:hidden" :class="{ 'opacity-60': loading }">
+      <ul class="divide-y divide-edge md:hidden" :class="{ 'opacity-60': loading }">
         <li
           v-for="(e, i) in expenses"
           :key="e.id"
-          class="flex items-start justify-between gap-3 px-4 py-4 even:bg-ledger/40"
+          class="flex items-start justify-between gap-3 px-4 py-4 even:bg-subtle/40"
         >
           <div class="min-w-0 flex-1">
             <div class="flex items-center gap-2">
@@ -148,19 +148,19 @@ const showEmpty = computed(() => !props.loading && props.expenses.length === 0)
             <div class="flex gap-1">
               <button
                 type="button"
-                class="grid h-8 w-8 place-items-center rounded-lg border border-rule text-ink-soft"
+                class="grid h-8 w-8 place-items-center rounded-lg border border-edge text-ink-soft"
                 :aria-label="`Edit ${e.description}`"
                 @click="emit('edit', e)"
               >
-                ✎
+                <Pencil class="h-4 w-4" aria-hidden="true" />
               </button>
               <button
                 type="button"
-                class="grid h-8 w-8 place-items-center rounded-lg border border-rule text-clay"
+                class="grid h-8 w-8 place-items-center rounded-lg border border-edge text-negative"
                 :aria-label="`Delete ${e.description}`"
                 @click="emit('delete', e)"
               >
-                🗑
+                <Trash2 class="h-4 w-4" aria-hidden="true" />
               </button>
             </div>
           </div>

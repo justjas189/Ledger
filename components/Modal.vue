@@ -5,6 +5,8 @@
 //   • locks page scroll while open
 //   • moves keyboard focus into the dialog when it opens
 //   • marks itself as role="dialog" for screen readers
+import { X } from 'lucide-vue-next'
+
 const props = withDefaults(
   defineProps<{
     open: boolean
@@ -48,11 +50,14 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <Teleport to="body">
+  <!-- ClientOnly: teleporting to <body> during SSR causes hydration
+       mismatches, and a dialog only ever opens after user interaction. -->
+  <ClientOnly>
+    <Teleport to="body">
     <Transition name="overlay">
       <div
         v-if="open"
-        class="fixed inset-0 z-50 flex items-end justify-center overflow-y-auto bg-ink/40 p-0 backdrop-blur-sm sm:items-center sm:p-6"
+        class="fixed inset-0 z-50 flex items-end justify-center overflow-y-auto bg-ink/50 p-0 backdrop-blur-sm sm:items-center sm:p-6"
         @click.self="emit('close')"
       >
         <div
@@ -67,7 +72,7 @@ onBeforeUnmount(() => {
           <!-- Header -->
           <div
             v-if="title || $slots.header"
-            class="flex items-center justify-between gap-4 border-b border-rule px-5 py-4 sm:px-6"
+            class="flex items-center justify-between gap-4 border-b border-edge px-5 py-4 sm:px-6"
           >
             <slot name="header">
               <h2
@@ -79,11 +84,11 @@ onBeforeUnmount(() => {
             </slot>
             <button
               type="button"
-              class="grid h-8 w-8 place-items-center rounded-lg text-ink-soft transition-colors hover:bg-ledger hover:text-ink"
+              class="grid h-8 w-8 place-items-center rounded-lg text-ink-soft transition-colors hover:bg-subtle hover:text-ink"
               aria-label="Close dialog"
               @click="emit('close')"
             >
-              ✕
+              <X class="h-4 w-4" aria-hidden="true" />
             </button>
           </div>
 
@@ -93,14 +98,15 @@ onBeforeUnmount(() => {
           <!-- Optional footer -->
           <div
             v-if="$slots.footer"
-            class="flex items-center justify-end gap-3 border-t border-rule px-5 py-4 sm:px-6"
+            class="flex items-center justify-end gap-3 border-t border-edge px-5 py-4 sm:px-6"
           >
             <slot name="footer" />
           </div>
         </div>
       </div>
     </Transition>
-  </Teleport>
+    </Teleport>
+  </ClientOnly>
 </template>
 
 <style scoped>

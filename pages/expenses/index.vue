@@ -2,6 +2,7 @@
 // Expenses — the full list with search, filters, pagination, and CRUD.
 // This page owns all the interaction state: the current filters, the page
 // number, and which modal (add/edit or delete-confirm) is open.
+import { Plus } from 'lucide-vue-next'
 import type { ExpenseDTO, ExpenseFilters, ExpenseListResponse } from '~/types/expense'
 
 useHead({ title: 'Expenses · Ledger' })
@@ -99,7 +100,7 @@ async function confirmDelete() {
         </p>
       </div>
       <button type="button" class="btn btn-primary" @click="openCreate">
-        <span aria-hidden="true">＋</span> Add expense
+        <Plus class="h-4 w-4" aria-hidden="true" /> Add expense
       </button>
     </div>
     <div class="mt-5 double-rule" />

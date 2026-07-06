@@ -128,7 +128,7 @@ async function submit() {
           placeholder="e.g. Weekly grocery run"
           maxlength="200"
         />
-        <p v-if="errors.description" class="mt-1 text-xs text-clay">{{ errors.description }}</p>
+        <p v-if="errors.description" class="mt-1 text-xs text-negative">{{ errors.description }}</p>
       </div>
 
       <!-- Amount + Date, side by side on wider screens -->
@@ -153,7 +153,7 @@ async function submit() {
               placeholder="0.00"
             />
           </div>
-          <p v-if="errors.amount" class="mt-1 text-xs text-clay">{{ errors.amount }}</p>
+          <p v-if="errors.amount" class="mt-1 text-xs text-negative">{{ errors.amount }}</p>
         </div>
 
         <div>
@@ -165,7 +165,7 @@ async function submit() {
             class="field font-mono tnum"
             :class="{ 'field-invalid': errors.date }"
           />
-          <p v-if="errors.date" class="mt-1 text-xs text-clay">{{ errors.date }}</p>
+          <p v-if="errors.date" class="mt-1 text-xs text-negative">{{ errors.date }}</p>
         </div>
       </div>
 
@@ -180,10 +180,10 @@ async function submit() {
         >
           <option value="" disabled>Choose a category…</option>
           <option v-for="c in categories" :key="c.id" :value="c.id">
-            {{ c.icon ? c.icon + ' ' : '' }}{{ c.name }}
+            {{ c.name }}
           </option>
         </select>
-        <p v-if="errors.categoryId" class="mt-1 text-xs text-clay">{{ errors.categoryId }}</p>
+        <p v-if="errors.categoryId" class="mt-1 text-xs text-negative">{{ errors.categoryId }}</p>
       </div>
     </form>
 

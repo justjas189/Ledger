@@ -80,7 +80,7 @@ const clearAll = () => {
         <select id="filter-category" v-model="categoryId" class="field">
           <option value="">All categories</option>
           <option v-for="c in categories" :key="c.id" :value="c.id">
-            {{ c.icon ? c.icon + ' ' : '' }}{{ c.name }}
+            {{ c.name }}
           </option>
         </select>
       </div>
@@ -97,7 +97,7 @@ const clearAll = () => {
     </div>
 
     <div v-if="hasFilters" class="mt-3 flex justify-end">
-      <button type="button" class="text-sm font-medium text-clay hover:underline" @click="clearAll">
+      <button type="button" class="text-sm font-medium text-negative hover:underline" @click="clearAll">
         Clear filters
       </button>
     </div>

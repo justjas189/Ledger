@@ -28,8 +28,8 @@ datasource db {
 model Category {
   id        String    @id @default(cuid()) // collision-resistant string id
   name      String    @unique // e.g. "Groceries"
-  color     String // hex code used by the UI, e.g. "#1E5A48"
-  icon      String? // optional single-glyph label, e.g. "🛒"
+  color     String // hex code used by the UI, e.g. "#0F766E"
+  icon      String? // optional Lucide icon name, e.g. "shopping-cart"
   createdAt DateTime  @default(now())
   expenses  Expense[] // back-relation: all expenses in this category
 

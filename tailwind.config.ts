@@ -1,45 +1,51 @@
 import type { Config } from 'tailwindcss'
 
 // Tailwind configuration.
-// This is where we define our design tokens — the specific colours and fonts
-// that give the app its "ledger" identity. Instead of scattering hex codes
-// through the components, we name them here once and reference them as
-// utility classes (e.g. `bg-pine`, `text-ink-soft`, `font-mono`).
+// Design tokens for the app's "professional finance" theme: a slate/gray base,
+// near-black text, and two semantic accents — `positive` (muted teal) for
+// income / under-budget / downward spending, and `negative` (muted crimson)
+// for expenses / over-budget / upward spending. Components reference these
+// names (`bg-surface`, `text-positive`) instead of raw hex codes, and the
+// full built-in slate scale stays available for neutral shades in between.
 export default <Partial<Config>>{
   theme: {
     extend: {
       colors: {
         // Surfaces
-        paper: '#F6F7F2', // app background — a warm, faintly green off-white
+        surface: '#F8FAFC', // app background (slate-50)
         panel: '#FFFFFF', // cards and raised surfaces
-        ledger: '#E8EEDF', // the pale "greenbar" tint used for ledger rows
-        rule: '#CBD8C0', // hairline ruling lines / borders
+        subtle: '#F1F5F9', // muted fills: skeletons, hovers, chart tracks (slate-100)
+        edge: '#E2E8F0', // hairline borders and dividers (slate-200)
 
         // Text
         ink: {
-          DEFAULT: '#16231B', // primary text — a near-black with a green cast
-          soft: '#5C6B60' // secondary text, labels, captions
+          DEFAULT: '#0F172A', // primary text (slate-900)
+          soft: '#64748B', // secondary text, labels, captions (slate-500)
+          strong: '#1E293B' // hover state for ink-filled controls (slate-800)
         },
 
-        // Brand / accents
-        pine: {
-          DEFAULT: '#1E5A48', // primary money-green: header, primary buttons
-          dark: '#16483A' // hover / pressed
+        // Semantic accents
+        positive: {
+          DEFAULT: '#0F766E', // muted teal — income, savings, under budget
+          dark: '#115E59', // hover / pressed
+          soft: '#CCFBF1' // tinted fills behind positive figures
         },
-        clay: '#B23A2E', // spend & destructive actions (delete, over-budget)
-        brass: '#B7892F' // highlight, focus rings, chart accent
+        negative: {
+          DEFAULT: '#9F1239', // muted crimson — expenses, over budget
+          dark: '#881337', // hover / pressed
+          soft: '#FFE4E6' // tinted fills behind negative figures
+        }
       },
       fontFamily: {
-        // A high-contrast serif for display moments (the wordmark, big totals).
-        display: ['Fraunces', 'ui-serif', 'Georgia', 'serif'],
-        // The everyday UI face — a clean, slightly warm grotesque.
-        sans: ['"Hanken Grotesk"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        // One clean grotesque for everything; weight and size carry hierarchy.
+        display: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
         // Monospace for money and dates so columns of figures line up.
         mono: ['"IBM Plex Mono"', 'ui-monospace', 'SFMono-Regular', 'monospace']
       },
       boxShadow: {
         // A soft, low card shadow — present but never heavy.
-        card: '0 1px 2px rgba(22,35,27,0.04), 0 12px 28px -16px rgba(22,35,27,0.18)'
+        card: '0 1px 2px rgba(15,23,42,0.04), 0 12px 28px -16px rgba(15,23,42,0.12)'
       },
       keyframes: {
         'fade-up': {

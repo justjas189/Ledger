@@ -21,7 +21,7 @@ export default defineNuxtConfig({
   css: ['~/assets/css/main.css'],
 
   // Everything inside <head>. We set the tab title, viewport (for mobile), a
-  // description, and load our three Google Fonts once for the whole app.
+  // description, and load our two Google Fonts once for the whole app.
   app: {
     head: {
       title: 'Ledger — Expense Tracker',
@@ -31,7 +31,7 @@ export default defineNuxtConfig({
         { name: 'viewport', content: 'width=device-width, initial-scale=1' },
         {
           name: 'description',
-          content: 'A simple, professional expense tracker built with Nuxt 3 and Prisma.'
+          content: 'A professional expense tracker built with Nuxt 3 and Prisma.'
         }
       ],
       link: [
@@ -40,7 +40,7 @@ export default defineNuxtConfig({
         { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
         {
           rel: 'stylesheet',
-          href: 'https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Hanken+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap'
+          href: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap'
         }
       ]
     }

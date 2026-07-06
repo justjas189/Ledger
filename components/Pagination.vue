@@ -1,6 +1,8 @@
 <script setup lang="ts">
 // Previous / next pagination with a "showing X–Y of N" summary, styled like a
 // ledger footer. Emits `update:page` so the parent can refetch that page.
+import { ChevronLeft, ChevronRight } from 'lucide-vue-next'
+
 const props = defineProps<{
   page: number
   totalPages: number
@@ -24,7 +26,7 @@ const go = (p: number) => {
 
 <template>
   <div
-    class="flex flex-col items-center justify-between gap-3 border-t border-rule px-1 pt-4 text-sm sm:flex-row"
+    class="flex flex-col items-center justify-between gap-3 border-t border-edge px-1 pt-4 text-sm sm:flex-row"
   >
     <p class="font-mono text-ink-soft tnum">
       {{ rangeStart }}–{{ rangeEnd }} of {{ total }}
@@ -37,7 +39,7 @@ const go = (p: number) => {
         :disabled="page <= 1"
         @click="go(page - 1)"
       >
-        ← Prev
+        <ChevronLeft class="h-4 w-4" aria-hidden="true" /> Prev
       </button>
       <span class="px-1 font-mono text-ink-soft tnum">
         Page {{ page }} of {{ totalPages }}
@@ -48,7 +50,7 @@ const go = (p: number) => {
         :disabled="page >= totalPages"
         @click="go(page + 1)"
       >
-        Next →
+        Next <ChevronRight class="h-4 w-4" aria-hidden="true" />
       </button>
     </div>
   </div>
