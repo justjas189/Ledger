@@ -1,7 +1,8 @@
 <script setup lang="ts">
-// The toolbar above the expenses ledger: search box, category filter, and a
-// date range. It keeps its own copies of the inputs and emits the whole filter
-// object upward (search is debounced so we don't refetch on every keystroke).
+// The toolbar above the expenses list: search box, category filter, and a
+// date range, all on one glass strip. It keeps its own copies of the inputs
+// and emits the whole filter object upward (search is debounced so we don't
+// refetch on every keystroke).
 import type { CategoryDTO, ExpenseFilters } from '~/types/expense'
 
 const props = defineProps<{
@@ -60,8 +61,8 @@ const clearAll = () => {
 </script>
 
 <template>
-  <div class="card p-4 sm:p-5">
-    <div class="grid gap-3 md:grid-cols-[1.4fr_1fr_auto]">
+  <div class="glass-card p-5">
+    <div class="grid gap-4 md:grid-cols-[1.4fr_1fr_auto]">
       <!-- Search -->
       <div>
         <label for="search" class="eyebrow mb-1.5 block">Search</label>
@@ -90,14 +91,18 @@ const clearAll = () => {
         <label for="from" class="eyebrow mb-1.5 block">From / To</label>
         <div class="flex items-center gap-2">
           <input id="from" v-model="from" type="date" class="field font-mono tnum" />
-          <span class="text-ink-soft" aria-hidden="true">–</span>
+          <span class="text-ink-faint" aria-hidden="true">–</span>
           <input id="to" v-model="to" type="date" class="field font-mono tnum" />
         </div>
       </div>
     </div>
 
     <div v-if="hasFilters" class="mt-3 flex justify-end">
-      <button type="button" class="text-sm font-medium text-negative hover:underline" @click="clearAll">
+      <button
+        type="button"
+        class="text-sm font-medium text-negative transition-colors hover:text-ink"
+        @click="clearAll"
+      >
         Clear filters
       </button>
     </div>

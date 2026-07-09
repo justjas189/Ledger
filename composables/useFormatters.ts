@@ -3,15 +3,32 @@
 // Files in `composables/` are auto-imported by Nuxt, so any component can just
 // call `useFormatters()` without importing it. Keeping formatting in one place
 // means money and dates look identical everywhere in the app.
+//
+// Money is CONVERTED and rendered in the globally selected display currency
+// (see useCurrency): amounts arrive in base USD, get multiplied by the active
+// static exchange rate, then formatted with that currency's locale + symbol.
+// Every call reads the shared state, so picking a currency from the dropdown
+// re-converts every figure in the app at once.
 export function useFormatters() {
-  /** 1234.5 -> "$1,234.50" */
-  const formatMoney = (amount: number, currency = 'USD') =>
-    new Intl.NumberFormat('en-US', {
+  const { active: displayCurrency, convert } = useCurrency()
+
+  /** Base-USD 1234.5 -> "$1,234.50", "₱71,601.00", "1.135,58 €", … */
+  const formatMoney = (amount: number) =>
+    new Intl.NumberFormat(CURRENCY_LOCALES[displayCurrency.value], {
       style: 'currency',
-      currency,
+      currency: displayCurrency.value,
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
-    }).format(Number.isFinite(amount) ? amount : 0)
+    }).format(convert(amount))
+
+  /** Base-USD 1234.5 -> "$1.2K" — for chart axes where full precision is noise. */
+  const formatMoneyCompact = (amount: number) =>
+    new Intl.NumberFormat(CURRENCY_LOCALES[displayCurrency.value], {
+      style: 'currency',
+      currency: displayCurrency.value,
+      notation: 'compact',
+      maximumFractionDigits: 1
+    }).format(convert(amount))
 
   /** ISO string -> "3 Jul 2026" */
   const formatDate = (iso: string | Date) => {
@@ -42,6 +59,7 @@ export function useFormatters() {
 
   return {
     formatMoney,
+    formatMoneyCompact,
     formatDate,
     formatDateInput,
     formatMonthLabel,

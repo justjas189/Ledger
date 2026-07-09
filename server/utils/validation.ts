@@ -33,6 +33,26 @@ export const expenseInputSchema = z.object({
 /** The clean, typed shape we get back after a successful parse. */
 export type ExpenseInput = z.infer<typeof expenseInputSchema>
 
+// Optional `tz` query param (IANA zone name) for the calendar-math endpoints.
+// Zod handles shape; Intl is the authority on whether the zone exists.
+const tzSchema = z.string().trim().min(1).max(64)
+
+/**
+ * Resolve a `tz` query value to a valid IANA zone, or null. Invalid and
+ * missing values both resolve to null — the stats endpoints then fall back to
+ * server-zone math rather than failing the whole dashboard over a bad hint.
+ */
+export function resolveTz(value: unknown): string | null {
+  const parsed = tzSchema.safeParse(value)
+  if (!parsed.success) return null
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone: parsed.data })
+    return parsed.data
+  } catch {
+    return null
+  }
+}
+
 /**
  * Validate a request body. On success returns the typed input; on failure
  * throws a 400 whose `data.fieldErrors` maps field name -> message.

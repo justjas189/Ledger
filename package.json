@@ -1,11 +1,11 @@
 {
-  "name": "expense-tracker",
+  "name": "vaulted",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "A simple, professional expense tracker — Nuxt 3 + Prisma + PostgreSQL proof of concept.",
+  "description": "Vaulted — a clean, light/dark FinTech expense tracker. Nuxt 3 + Prisma + PostgreSQL.",
   "scripts": {
-    "dev": "nuxt dev",
+    "dev": "nuxt dev --host",
     "build": "nuxt build",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
@@ -21,14 +21,14 @@
   },
   "dependencies": {
     "@prisma/client": "6.19.3",
-    "chart.js": "^4.5.1",
     "lucide-vue-next": "^1.0.0",
     "nuxt": "3.21.8",
+    "tesseract.js": "^7.0.0",
     "vue": "3.5.39",
-    "vue-chartjs": "^5.3.3",
     "zod": "4.4.3"
   },
   "devDependencies": {
+    "@nuxt/fonts": "^0.14.0",
     "@nuxtjs/tailwindcss": "6.14.0",
     "@types/node": "^22",
     "prisma": "6.19.3",

@@ -60,6 +60,25 @@ export interface DailyTrendPoint {
   total: number
 }
 
+/** One forecast day: calendar day-of-month and its expected spend (base USD). */
+export interface ForecastDay {
+  day: number
+  expected: number
+}
+
+/**
+ * Response of GET /api/stats/forecast — the seasonal month-end projection
+ * (weekday means + recurring day-of-month spikes over 90 days of history).
+ */
+export interface ForecastResponse {
+  /** False when there isn't enough history to say anything useful. */
+  ready: boolean
+  /** Expected spend for each REMAINING day of the current month. */
+  days: ForecastDay[]
+  /** Month-to-date actual + the sum of expected remaining days. */
+  projectedTotal: number
+}
+
 /** This month's spend vs the configured budget, per category. */
 export interface BudgetComparison {
   categoryId: string
@@ -85,6 +104,15 @@ export interface StatsResponse {
   balance: number
   /** (income - spend) / income, as a percentage. */
   savingsRate: number
+  /**
+   * Spending pace: what the month-end total will be if spending continues at
+   * the current daily rate — (spent / dayOfMonth) * daysInMonth.
+   */
+  projectedMonthTotal: number
+  /** Sum of every category's monthly budget. */
+  totalBudget: number
+  /** True when the projection exceeds income or the total budget. */
+  paceOverLimit: boolean
   topCategory: CategoryBreakdown | null
   breakdown: CategoryBreakdown[]
   /** Daily totals for the last 30 days, oldest first, zero-filled. */

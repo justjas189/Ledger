@@ -1,8 +1,11 @@
 <script setup lang="ts">
-// A small coloured tag showing a category's icon + name.
-// The colour comes from the database, so a category looks the same everywhere.
+// A category tag with a coloured circular icon wrapper — the modern banking
+// app pattern. Each category resolves to its distinct hue (Transport blue,
+// Groceries green, Dining orange … see useCategoryColors), the icon sits in a
+// soft tinted circle of that hue, and the name stays in plain text so
+// identity never depends on colour alone.
 // `icon` is a Lucide icon name (e.g. "shopping-cart") resolved to a component;
-// unknown names simply render without an icon.
+// unknown names fall back to a coloured dot.
 const props = withDefaults(
   defineProps<{
     name: string
@@ -14,34 +17,35 @@ const props = withDefaults(
 )
 
 const { resolveIcon } = useCategoryIcons()
-const iconComponent = computed(() => resolveIcon(props.icon))
+const { categoryColor, withAlpha } = useCategoryColors()
 
-// Build a faint tinted background from the category's hex colour (hex + alpha).
-const tint = computed(() => ({
-  backgroundColor: `${props.color}14`, // ~8% opacity
-  color: '#0F172A'
-}))
+const iconComponent = computed(() => resolveIcon(props.icon))
+const hue = computed(() => categoryColor(props.name, props.color))
 </script>
 
 <template>
   <span
-    class="inline-flex items-center gap-1.5 rounded-full font-medium leading-none"
-    :class="size === 'sm' ? 'px-2 py-1 text-xs' : 'px-2.5 py-1.5 text-sm'"
-    :style="tint"
+    class="inline-flex items-center gap-1.5 font-medium leading-none text-ink-soft"
+    :class="size === 'sm' ? 'text-xs' : 'text-sm'"
   >
-    <component
-      :is="iconComponent"
-      v-if="iconComponent"
-      class="h-3.5 w-3.5 shrink-0"
-      :style="{ color }"
-      aria-hidden="true"
-    />
     <span
-      v-else
-      class="inline-block h-2 w-2 shrink-0 rounded-full"
-      :style="{ backgroundColor: color }"
+      class="grid shrink-0 place-items-center rounded-full"
+      :class="size === 'sm' ? 'h-5 w-5' : 'h-6 w-6'"
+      :style="{ backgroundColor: withAlpha(hue, 0.16) }"
       aria-hidden="true"
-    />
+    >
+      <component
+        :is="iconComponent"
+        v-if="iconComponent"
+        :class="size === 'sm' ? 'h-3 w-3' : 'h-3.5 w-3.5'"
+        :style="{ color: hue }"
+      />
+      <span
+        v-else
+        class="inline-block h-1.5 w-1.5 rounded-full"
+        :style="{ backgroundColor: hue }"
+      />
+    </span>
     <span>{{ name }}</span>
   </span>
 </template>

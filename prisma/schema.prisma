@@ -7,12 +7,17 @@
 // Run `npx prisma migrate dev` after editing this file to apply changes.
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  // Needed for `extensions` below (pg_trgm) — still a preview flag in Prisma 6.
+  previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  // pg_trgm powers the trigram GIN index on expenses.description, so the
+  // search box's `ILIKE '%term%'` stops sequential-scanning past ~10k rows.
+  extensions = [pg_trgm]
 }
 
 // ---------------------------------------------------------------------------
@@ -60,5 +65,9 @@ model Expense {
   // and filtering by category.
   @@index([date])
   @@index([categoryId])
+  // Trigram GIN index so the search box's case-insensitive substring match
+  // (`contains` + mode: 'insensitive' => ILIKE '%term%') uses an index scan
+  // instead of walking every row. Requires the pg_trgm extension (datasource).
+  @@index([description(ops: raw("gin_trgm_ops"))], type: Gin)
   @@map("expenses")
 }
