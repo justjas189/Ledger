@@ -50,6 +50,10 @@ export function useFocusTrap(panel: Ref<HTMLElement | null>, onEscape?: () => vo
 
     if (e.key === 'Escape' && onEscape) {
       e.preventDefault()
+      // Swallow the event entirely: document-level Escape listeners (e.g. the
+      // account menu's light-dismiss) must not also react to the same press —
+      // one Escape closes exactly one layer.
+      e.stopPropagation()
       onEscape()
       return
     }

@@ -22,8 +22,11 @@ const isActive = (to: string) =>
 </script>
 
 <template>
+  <!-- Safe-area aware: on notched phones (viewport-fit=cover) the dock rises
+       above the home-indicator bar; env() resolves to 0 everywhere else, so
+       desktop keeps the plain 1rem / 1.5rem offsets. -->
   <nav
-    class="fixed inset-x-0 bottom-4 z-40 flex justify-center px-4 sm:bottom-6"
+    class="fixed inset-x-0 z-40 flex justify-center px-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] sm:bottom-[calc(1.5rem+env(safe-area-inset-bottom))]"
     aria-label="Primary"
   >
     <div class="glass grid grid-cols-[1fr_auto_1fr] items-center rounded-full p-1.5 shadow-sm">

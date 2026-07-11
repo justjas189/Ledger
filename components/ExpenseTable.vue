@@ -128,19 +128,22 @@ function swipeStyle(id: string) {
 
     <!-- ── Data ────────────────────────────────────────────────────── -->
     <template v-else>
-      <!-- Desktop: table -->
+      <!-- ≥ sm: table. The # and Category columns only join at md so the
+           640–768px band isn't cramped; in that band the category pill rides
+           inside the Description cell instead. Below sm the table is gone
+           entirely — the stacked cards take over. -->
       <table
-        class="hidden w-full border-collapse text-sm transition-opacity duration-200 md:table"
+        class="hidden w-full border-collapse text-sm transition-opacity duration-200 sm:table"
         :class="{ 'opacity-50': loading }"
       >
         <thead>
           <tr class="border-b border-edge/10 text-left">
-            <th class="w-10 px-4 py-4 text-right font-normal">
+            <th class="hidden w-10 px-4 py-4 text-right font-normal md:table-cell">
               <span class="eyebrow">#</span>
             </th>
-            <th class="w-32 px-3 py-4"><span class="eyebrow">Date</span></th>
+            <th class="w-28 px-3 py-4 md:w-32"><span class="eyebrow">Date</span></th>
             <th class="px-3 py-4"><span class="eyebrow">Description</span></th>
-            <th class="w-44 px-3 py-4"><span class="eyebrow">Category</span></th>
+            <th class="hidden w-44 px-3 py-4 md:table-cell"><span class="eyebrow">Category</span></th>
             <th class="w-32 px-3 py-4 text-right"><span class="eyebrow">Amount</span></th>
             <th class="w-24 px-4 py-4 text-right"><span class="sr-only">Actions</span></th>
           </tr>
@@ -153,7 +156,7 @@ function swipeStyle(id: string) {
             :style="{ '--i': i }"
           >
             <!-- running line number, continued across pages -->
-            <td class="px-4 py-3.5 text-right align-middle font-mono text-xs text-ink-faint tnum">
+            <td class="hidden px-4 py-3.5 text-right align-middle font-mono text-xs text-ink-faint tnum md:table-cell">
               {{ startIndex + i + 1 }}
             </td>
             <td class="whitespace-nowrap px-3 py-3.5 align-middle font-mono text-ink-soft tnum">
@@ -162,6 +165,16 @@ function swipeStyle(id: string) {
             <td class="px-3 py-3.5 align-middle font-medium text-ink">
               <span class="inline-flex flex-wrap items-center gap-2">
                 {{ e.description }}
+                <!-- sm–md only: the dedicated Category column is hidden, so
+                     the pill tags along with the description instead. -->
+                <CategoryPill
+                  v-if="e.category"
+                  class="md:hidden"
+                  :name="e.category.name"
+                  :color="e.category.color"
+                  :icon="e.category.icon"
+                  size="sm"
+                />
                 <span
                   v-if="anomalyFor(e)"
                   class="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 font-mono text-[0.65rem] font-medium text-amber-600 dark:text-amber-400"
@@ -173,7 +186,7 @@ function swipeStyle(id: string) {
                 </span>
               </span>
             </td>
-            <td class="px-3 py-3.5 align-middle">
+            <td class="hidden px-3 py-3.5 align-middle md:table-cell">
               <CategoryPill
                 v-if="e.category"
                 :name="e.category.name"
@@ -211,12 +224,12 @@ function swipeStyle(id: string) {
         </TransitionGroup>
       </table>
 
-      <!-- Mobile: stacked cards -->
+      <!-- < sm: stacked cards (swipe-left to delete; buttons remain). -->
       <TransitionGroup
         tag="ul"
         name="rows"
         appear
-        class="divide-y divide-edge/5 transition-opacity duration-200 md:hidden"
+        class="divide-y divide-edge/5 transition-opacity duration-200 sm:hidden"
         :class="{ 'opacity-50': loading }"
       >
         <li

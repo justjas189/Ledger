@@ -65,6 +65,8 @@ export function useCurrency() {
   // Once per session — every component calls useCurrency(), but only the
   // first loadRates() should do work.
   const ratesLoaded = useState<boolean>('currency-rates-loaded', () => false)
+  // Whether we've already tried to seed the choice from the user's DB setting.
+  const dbHydrated = useState<boolean>('currency-db-hydrated', () => false)
 
   /**
    * Validate an untrusted rate object (API response or localStorage) and
@@ -137,15 +139,40 @@ export function useCurrency() {
     }
   }
 
+  /**
+   * Seed the display currency from the user's saved DB setting
+   * (Profile.currency, chosen at onboarding). Only called when this device has
+   * no explicit pick of its own, so the DB preference follows the user across
+   * devices without overriding a local dropdown choice. Deliberately does NOT
+   * write localStorage — leaving the device unpinned means a later DB change
+   * still seeds, until the user makes an explicit local choice via set().
+   */
+  async function hydrateFromServer() {
+    if (!import.meta.client || dbHydrated.value) return
+    dbHydrated.value = true
+    try {
+      const s = await $fetch<{ currency?: string }>('/api/settings')
+      if (isCurrencyCode(s?.currency)) active.value = s.currency
+    } catch {
+      // Not signed in yet / offline: keep whatever's already in effect.
+    }
+  }
+
   /** Restore the saved choice + kick off the daily rate refresh. Call once on mount (see layouts/default.vue). */
   function init() {
     if (!import.meta.client) return
+    let hasLocalChoice = false
     try {
       const saved = localStorage.getItem(STORAGE_KEY)
-      if (isCurrencyCode(saved)) active.value = saved
+      if (isCurrencyCode(saved)) {
+        active.value = saved
+        hasLocalChoice = true
+      }
     } catch {
       // Private mode / blocked storage: fall back to the in-memory default.
     }
+    // No device-level pick → let the user's saved DB currency seed the display.
+    if (!hasLocalChoice) void hydrateFromServer()
     void loadRates() // fire-and-forget; figures re-render when rates land
   }
 

@@ -7,8 +7,10 @@
 // `useState` list. Every consumer reuses the same fetch; nothing is loaded
 // twice, and nothing runs on the server.
 //
-// The pool is a read-only analytical snapshot: it converges on fresh data on
-// the next hard load rather than tracking every optimistic mutation live.
+// The pool is a read-only analytical snapshot. It doesn't track optimistic
+// mutations live, but refreshSpendingCaches() force-reloads it after every
+// successful expense mutation, so pool-derived UI (the streak chip, anomalies,
+// week-in-review, the forecast fallback) updates in place without a reload.
 import type { ExpenseDTO, ExpenseListResponse } from '~/types/expense'
 
 /** How far back the analytical window reaches. */

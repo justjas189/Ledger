@@ -76,3 +76,124 @@ export function parseExpenseInput(body: unknown): ExpenseInput {
   }
   return result.data
 }
+
+// A positive money amount within Decimal(10,2) range — the shared rule for a
+// budget, a savings target, or an amount saved. Reused so every stored amount
+// obeys the same bounds as an expense.
+const moneyAmount = z.coerce
+  .number()
+  .refine((n) => Number.isFinite(n), 'Enter a valid amount.')
+  .refine((n) => n <= 99999999.99, 'That amount is too large.')
+
+/** The display currencies we support, mirrored on the client (useCurrency). */
+export const CURRENCY_CODES = ['USD', 'PHP', 'EUR', 'GBP'] as const
+
+// --- Settings --------------------------------------------------------------
+// The per-user monthly budget (base USD) and preferred display currency. Same
+// money rules as an expense amount — positive and within Decimal(10,2) range.
+// `currency` is optional so the budget-only editor can leave it untouched.
+export const settingsInputSchema = z.object({
+  monthlyBudget: moneyAmount.refine((n) => n > 0, 'Budget must be greater than 0.'),
+  currency: z.enum(CURRENCY_CODES).optional()
+})
+
+export type SettingsInput = z.infer<typeof settingsInputSchema>
+
+export function parseSettingsInput(body: unknown): SettingsInput {
+  return parseWithFieldErrors(settingsInputSchema, body)
+}
+
+// --- Savings goals ---------------------------------------------------------
+// `target` is base USD, entered in the active display currency and converted
+// client-side (like the budget field). `targetDate` is the deadline. BOTH are
+// now optional/nullable: a goal without them is an open-ended fund (e.g.
+// "Emergency Fund") that shares the same contributions ledger. Invariant —
+// a targetDate requires a target: a deadline with no amount means nothing.
+const goalName = z
+  .string()
+  .trim()
+  .min(1, 'Give the goal a name.')
+  .max(60, 'Keep the name under 60 characters.')
+
+const goalTarget = moneyAmount.refine((n) => n > 0, 'Enter a target greater than 0.')
+
+const goalTargetDate = z.coerce
+  .date()
+  .refine((d) => !Number.isNaN(d.getTime()), 'Choose a target date.')
+
+export const savingsGoalInputSchema = z
+  .object({
+    name: goalName,
+    // Absent and explicit null both mean "open-ended"; normalise to null so
+    // the routes only ever deal with one empty value.
+    target: goalTarget.nullish().transform((v) => v ?? null),
+    targetDate: goalTargetDate.nullish().transform((v) => v ?? null)
+  })
+  .refine((v) => v.targetDate === null || v.target !== null, {
+    message: 'A deadline needs a target amount.',
+    path: ['target']
+  })
+
+export type SavingsGoalInput = z.infer<typeof savingsGoalInputSchema>
+
+export function parseSavingsGoalInput(body: unknown): SavingsGoalInput {
+  return parseWithFieldErrors(savingsGoalInputSchema, body)
+}
+
+// A PATCH-style edit of the goal itself (name / target / deadline) — any subset,
+// but at least one. Adding money is NOT here: that's a contribution (below).
+// `target`/`targetDate` accept explicit null to CLEAR them (targeted goal →
+// open-ended fund). The targetDate-requires-target invariant spans the body
+// AND the existing row, so the route checks it after merging.
+export const savingsGoalUpdateSchema = z
+  .object({
+    name: goalName.optional(),
+    target: goalTarget.nullable().optional(),
+    targetDate: goalTargetDate.nullable().optional()
+  })
+  .refine((v) => v.name !== undefined || v.target !== undefined || v.targetDate !== undefined, {
+    message: 'Nothing to update.',
+    path: ['name']
+  })
+
+export type SavingsGoalUpdate = z.infer<typeof savingsGoalUpdateSchema>
+
+export function parseSavingsGoalUpdate(body: unknown): SavingsGoalUpdate {
+  return parseWithFieldErrors(savingsGoalUpdateSchema, body)
+}
+
+// One deposit toward a goal (the "Add funds" flow). Base USD, > 0. The date is
+// set server-side to now, so it's not accepted from the client.
+export const contributionInputSchema = z.object({
+  amount: moneyAmount.refine((n) => n > 0, 'Enter an amount greater than 0.')
+})
+
+export type ContributionInput = z.infer<typeof contributionInputSchema>
+
+export function parseContributionInput(body: unknown): ContributionInput {
+  return parseWithFieldErrors(contributionInputSchema, body)
+}
+
+/**
+ * Shared safeParse → typed value, or a 400 whose `data.fieldErrors` maps field
+ * name -> first message. Every parse helper funnels through this so error
+ * shapes stay identical across routes.
+ */
+function parseWithFieldErrors<T extends z.ZodTypeAny>(schema: T, body: unknown): z.infer<T> {
+  const result = schema.safeParse(body)
+  if (!result.success) {
+    const fieldErrors: Record<string, string> = {}
+    for (const issue of result.error.issues) {
+      const key = issue.path[0]
+      if (typeof key === 'string' && !fieldErrors[key]) {
+        fieldErrors[key] = issue.message
+      }
+    }
+    throw createError({
+      statusCode: 400,
+      statusMessage: 'Please fix the highlighted fields.',
+      data: { fieldErrors }
+    })
+  }
+  return result.data
+}

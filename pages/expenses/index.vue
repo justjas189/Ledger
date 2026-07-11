@@ -18,7 +18,21 @@ const { open: openQuickAdd } = useQuickAdd()
 const PAGE_SIZE = 10
 
 // --- List query state -------------------------------------------------------
-const filters = ref<ExpenseFilters>({ search: '', categoryId: '', from: '', to: '' })
+// Filters seed from the URL's query params so drill-down links (the dashboard
+// budget rings pass ?categoryId&from&to) land pre-filtered: SearchFilterBar
+// mirrors modelValue into its inputs, so the category dropdown and date range
+// arrive already set. Repeated params (?from=a&from=b) collapse to first.
+const route = useRoute()
+const qp = (key: string): string => {
+  const v = route.query[key]
+  return typeof v === 'string' ? v : Array.isArray(v) && typeof v[0] === 'string' ? v[0] : ''
+}
+const filters = ref<ExpenseFilters>({
+  search: qp('search'),
+  categoryId: qp('categoryId'),
+  from: qp('from'),
+  to: qp('to')
+})
 const page = ref(1)
 
 // The query object is reactive, so useFetch automatically refetches whenever

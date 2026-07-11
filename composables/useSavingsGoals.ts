@@ -1,111 +1,91 @@
 // Savings goals (ROADMAP §4, Retention).
 //
-// Positive framing: targets to fill rather than ceilings to fear. Goals are
-// a purely client-side feature — the API is locked — so the store lives in
-// localStorage behind a shared useState. Amounts are BASE USD, the same
-// convention as expense entry: they render through formatMoney, so they
-// convert with the display currency like every other figure.
-
-export interface SavingsGoal {
-  id: string
-  name: string
-  /** Target amount, base USD. Always > 0. */
-  target: number
-  /** Amount put aside so far, base USD. Never negative. */
-  saved: number
-  createdAt: string
-}
-
-const STORAGE_KEY = 'vaulted-savings-goals'
-
-/** Shape-check untrusted storage rows so a corrupt cache can't crash the card. */
-function isGoal(v: unknown): v is SavingsGoal {
-  if (!v || typeof v !== 'object') return false
-  const g = v as Record<string, unknown>
-  return (
-    typeof g.id === 'string' &&
-    typeof g.name === 'string' &&
-    typeof g.target === 'number' &&
-    Number.isFinite(g.target) &&
-    g.target > 0 &&
-    typeof g.saved === 'number' &&
-    Number.isFinite(g.saved) &&
-    g.saved >= 0 &&
-    typeof g.createdAt === 'string'
-  )
-}
+// Positive framing: targets to fill rather than ceilings to fear. Goals live in
+// Postgres (model SavingsGoal), owned by the signed-in user. The amount saved
+// is no longer a flat column — it's the SUM of a contributions ledger
+// (SavingsContribution), aggregated server-side into totalSaved +
+// thisMonthSaved so we can show month-to-month progress. Adding money appends a
+// ledger row via POST /api/goals/:id/contributions. Amounts are BASE USD (the
+// dialogs enter them in the active display currency and convert).
+import type { SavingsGoalDTO } from '~/types/expense'
 
 const round2 = (n: number) => Math.round(n * 100) / 100
 
+/** The browser's IANA zone, so "this month" aggregates match the user's calendar. */
+function clientTz(): string | undefined {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || undefined
+  } catch {
+    return undefined
+  }
+}
+
 export function useSavingsGoals() {
-  const goals = useState<SavingsGoal[]>('savings-goals', () => [])
+  const goals = useState<SavingsGoalDTO[]>('savings-goals', () => [])
   const loaded = useState<boolean>('savings-goals-loaded', () => false)
+  const pending = useState<boolean>('savings-goals-pending', () => false)
 
-  /** Restore from localStorage. Idempotent; call from any consumer. */
-  function load() {
-    if (!import.meta.client || loaded.value) return
-    loaded.value = true
+  /** Fetch the user's goals + aggregates. Idempotent; pass force after a change. */
+  async function load(force = false) {
+    if (!import.meta.client || (loaded.value && !force)) return
+    pending.value = true
     try {
-      const raw = localStorage.getItem(STORAGE_KEY)
-      if (!raw) return
-      const parsed = JSON.parse(raw)
-      if (Array.isArray(parsed)) goals.value = parsed.filter(isGoal)
-    } catch {
-      // Corrupt or blocked storage: start empty.
+      goals.value = await $fetch<SavingsGoalDTO[]>('/api/goals', { query: { tz: clientTz() } })
+      loaded.value = true
+    } finally {
+      pending.value = false
     }
   }
 
-  function persist() {
-    if (!import.meta.client) return
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(goals.value))
-    } catch {
-      // Storage blocked: goals last for the session only.
-    }
-  }
-
-  /** Create a goal. Returns false (and changes nothing) on bad input. */
-  function addGoal(name: string, target: number): boolean {
-    const clean = name.trim()
-    if (!clean || !Number.isFinite(target) || target <= 0) return false
-    goals.value = [
-      ...goals.value,
-      {
-        id: `goal-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-        name: clean.slice(0, 60),
-        target: round2(target),
-        saved: 0,
-        createdAt: new Date().toISOString()
+  /**
+   * Create a savings bucket. Pass `goal` (BASE USD target + yyyy-mm-dd
+   * deadline) for a targeted goal; omit it for an open-ended fund (e.g.
+   * "Emergency Fund") — same ledger, no finish line.
+   */
+  async function addGoal(
+    name: string,
+    goal?: { target: number; targetDate: string }
+  ): Promise<SavingsGoalDTO> {
+    const created = await $fetch<SavingsGoalDTO>('/api/goals', {
+      method: 'POST',
+      body: {
+        name: name.trim().slice(0, 60),
+        target: goal ? round2(goal.target) : null,
+        targetDate: goal ? goal.targetDate : null
       }
-    ]
-    persist()
-    return true
-  }
-
-  /** Put money toward a goal (positive amounts only, from the card's form). */
-  function contribute(id: string, amount: number): boolean {
-    if (!Number.isFinite(amount) || amount <= 0) return false
-    let hit = false
-    goals.value = goals.value.map((g) => {
-      if (g.id !== id) return g
-      hit = true
-      return { ...g, saved: round2(g.saved + amount) }
     })
-    if (hit) persist()
-    return hit
+    goals.value = [...goals.value, created]
+    return created
   }
 
-  function removeGoal(id: string) {
+  /**
+   * Add money to a goal — appends a contribution and returns the goal with
+   * refreshed aggregates. `amount` is BASE USD.
+   */
+  async function contribute(goalId: string, amount: number): Promise<SavingsGoalDTO> {
+    const updated = await $fetch<SavingsGoalDTO>(`/api/goals/${goalId}/contributions`, {
+      method: 'POST',
+      query: { tz: clientTz() },
+      body: { amount: round2(amount) }
+    })
+    goals.value = goals.value.map((g) => (g.id === goalId ? updated : g))
+    // A contribution moves money into savings, which changes this month's
+    // thisMonthSaved → Safe to Spend, Savings rate and the spending pace on the
+    // dashboard. The dashboard reads /api/stats under the 'stats' key, so
+    // invalidate it here and let its useFetch re-run — no parent wiring, the
+    // headline tiles update without a page reload.
+    await refreshNuxtData('stats')
+    return updated
+  }
+
+  /** Permanently delete a goal (its contributions cascade). Card holds an Undo. */
+  async function removeGoal(id: string) {
+    await $fetch(`/api/goals/${id}`, { method: 'DELETE' })
     goals.value = goals.value.filter((g) => g.id !== id)
-    persist()
+    // Deleting a goal cascades its contributions away, so this month's savings
+    // total drops — refresh the dashboard stats for the same reason as above.
+    await refreshNuxtData('stats')
   }
 
-  /** Put a just-removed goal back — powers the delete toast's Undo. */
-  function restoreGoal(goal: SavingsGoal) {
-    if (goals.value.some((g) => g.id === goal.id)) return
-    goals.value = [...goals.value, goal]
-    persist()
-  }
-
-  return { goals, loaded, load, addGoal, contribute, removeGoal, restoreGoal }
+  return { goals, loaded, pending, load, addGoal, contribute, removeGoal }
 }

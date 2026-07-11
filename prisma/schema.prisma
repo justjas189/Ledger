@@ -15,6 +15,7 @@ generator client {
 datasource db {
   provider   = "postgresql"
   url        = env("DATABASE_URL")
+  directUrl  = env("DIRECT_URL")
   // pg_trgm powers the trigram GIN index on expenses.description, so the
   // search box's `ILIKE '%term%'` stops sequential-scanning past ~10k rows.
   extensions = [pg_trgm]
@@ -32,12 +33,21 @@ datasource db {
 //     many Expenses) that you'll meet in almost every real app.
 model Category {
   id        String    @id @default(cuid()) // collision-resistant string id
-  name      String    @unique // e.g. "Groceries"
+  // Owner = Supabase auth.users.id. Typed uuid to match that column; @map so
+  // the Postgres column is snake_case `user_id`. No Prisma @relation because
+  // Prisma doesn't own the `auth` schema — the real FK to auth.users is added
+  // by supabase/rls.sql after migrate.
+  userId    String    @db.Uuid @map("user_id")
+  name      String // e.g. "Groceries" — unique PER USER now (see @@unique)
   color     String // hex code used by the UI, e.g. "#0F766E"
   icon      String? // optional Lucide icon name, e.g. "shopping-cart"
   createdAt DateTime  @default(now())
   expenses  Expense[] // back-relation: all expenses in this category
 
+  // Each user owns their own category namespace: two users can both have
+  // "Groceries"; one user can't have it twice.
+  @@unique([userId, name])
+  @@index([userId])
   @@map("categories") // real table name in Postgres
 }
 
@@ -46,6 +56,9 @@ model Category {
 // ---------------------------------------------------------------------------
 model Expense {
   id          String   @id @default(cuid())
+  // Owner = Supabase auth.users.id (uuid), column `user_id`. See the Category
+  // note; the FK to auth.users lives in supabase/rls.sql.
+  userId      String   @db.Uuid @map("user_id")
   description String // what the money was spent on
   // Money is stored as Decimal, NEVER as a float. Floats (0.1 + 0.2 problems)
   // silently corrupt currency; Decimal(10,2) keeps exact cents up to
@@ -63,11 +76,103 @@ model Expense {
 
   // Indexes speed up the queries we actually run: sorting/filtering by date
   // and filtering by category.
-  @@index([date])
+  // Tenant-scoped: every query filters by userId, usually with a date range.
+  @@index([userId, date])
   @@index([categoryId])
   // Trigram GIN index so the search box's case-insensitive substring match
   // (`contains` + mode: 'insensitive' => ILIKE '%term%') uses an index scan
   // instead of walking every row. Requires the pg_trgm extension (datasource).
   @@index([description(ops: raw("gin_trgm_ops"))], type: Gin)
   @@map("expenses")
+}
+
+// ---------------------------------------------------------------------------
+// Profile
+// ---------------------------------------------------------------------------
+// One row per Supabase auth user (1-to-1) for per-user settings that used to
+// live in localStorage. `userId` IS the primary key, which enforces the 1-1
+// with auth.users. No Prisma @relation to auth.users (Prisma doesn't own the
+// `auth` schema) — the FK is added in supabase/rls.sql, same as the others.
+model Profile {
+  userId        String   @id @db.Uuid @map("user_id")
+  // Monthly budget / income limit, base USD (Decimal(10,2)) like every stored
+  // amount. NULL until onboarding is done — the dashboard reads null as "not
+  // onboarded yet" and shows the welcome modal.
+  monthlyBudget Decimal? @db.Decimal(10, 2) @map("monthly_budget")
+  // Preferred DISPLAY currency (USD/PHP/EUR/GBP), chosen at onboarding. Stored
+  // amounts stay base USD everywhere — this only drives how figures are shown.
+  // Defaults to USD so existing rows and the pre-onboarding state keep working.
+  currency      String   @default("USD")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@map("profiles")
+}
+
+// ---------------------------------------------------------------------------
+// SavingsGoal
+// ---------------------------------------------------------------------------
+// A savings BUCKET the user moves money into. Two flavours share this one
+// model and one contributions ledger:
+//   • Targeted goal   — target + targetDate set ("New Laptop by Dec"), the
+//     ring fills toward the amount and counts down to the deadline.
+//   • Open-ended fund — both NULL ("Emergency Fund"), no finish line; the
+//     card shows the running balance instead of a percentage.
+// One model on purpose: Safe to Spend / savings rate aggregate the
+// SavingsContribution ledger per USER, so both flavours feed the dashboard
+// identically, and an open fund can become a targeted goal by simply setting
+// a target. Invariant (enforced in validation + a CHECK in supabase/rls.sql):
+// targetDate requires target — a deadline without an amount means nothing.
+//
+// Was a purely client-side, localStorage feature; the multi-tenant overhaul
+// moved it into Postgres, and a prior revision dropped the flat `saved`
+// running total in favour of the CONTRIBUTIONS LEDGER (SavingsContribution
+// below) — the amount saved is the sum of contributions, which lets us track
+// progress chronologically (e.g. how much was put aside THIS month), matching
+// Vaulted's month-to-month philosophy. Owner = Supabase auth.users.id (uuid),
+// column `user_id`, same convention as the other models; the FK to auth.users
+// lives in supabase/rls.sql.
+model SavingsGoal {
+  id         String                @id @default(cuid())
+  userId     String                @db.Uuid @map("user_id")
+  name       String // e.g. "New Laptop" or "Emergency Fund"
+  // Target amount, base USD Decimal(10,2) — the storage convention for every
+  // amount; the UI enters it in the active display currency and converts.
+  // NULL = open-ended fund (no finish line). When set, always > 0.
+  target     Decimal?              @db.Decimal(10, 2)
+  // The deadline the user is aiming for. Powers the "X days left" countdown.
+  // NULL = no deadline; only meaningful when `target` is set (see invariant).
+  targetDate DateTime?             @map("target_date")
+  createdAt  DateTime              @default(now()) @map("created_at")
+  updatedAt  DateTime              @updatedAt @map("updated_at")
+  // The ledger: every top-up is a row. Sum = amount saved. Cascade so deleting
+  // a goal takes its contributions with it.
+  contributions SavingsContribution[]
+
+  @@index([userId])
+  @@map("savings_goals")
+}
+
+// ---------------------------------------------------------------------------
+// SavingsContribution
+// ---------------------------------------------------------------------------
+// One deposit toward a goal — the ledger row created every time the user taps
+// "Add funds". Aggregated (SUM over all rows, and SUM over the current calendar
+// month) by GET /api/goals rather than kept as a flat column, so the same data
+// answers both "how far along?" and "how much this month?". `userId` is
+// denormalised from the goal so tenant scoping + RLS stay a simple
+// `user_id = auth.uid()` like every other table, with no join.
+model SavingsContribution {
+  id        String      @id @default(cuid())
+  userId    String      @db.Uuid @map("user_id")
+  goalId    String      @map("goal_id")
+  goal      SavingsGoal @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  amount    Decimal     @db.Decimal(10, 2) // always > 0
+  date      DateTime // when the money was put aside (defaults to now on create)
+  createdAt DateTime    @default(now()) @map("created_at")
+
+  @@index([goalId])
+  // Every aggregation filters by user, usually within a month window.
+  @@index([userId, date])
+  @@map("savings_contributions")
 }

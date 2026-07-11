@@ -52,18 +52,26 @@ const { data: rawStats, pending, error, refresh } = useFetch<StatsResponse>('/ap
   getCachedData: (key, nuxtApp) => nuxtApp.payload.data[key] ?? nuxtApp.static.data[key]
 })
 
-// The user's own monthly budget (localStorage; the API is locked) overlays
-// the payload: adjust() re-derives income, balance, savings rate and the
-// pace flag, and because it reads a shared useState every figure below —
-// tiles, pace line, nudges — updates the moment the budget is edited.
-const { load: loadBudget, adjust: adjustForBudget } = useMonthlyBudget()
-if (import.meta.client) loadBudget()
-const stats = computed(() =>
-  rawStats.value ? adjustForBudget(rawStats.value) : rawStats.value
-)
+// The monthly budget now lives in the DB (Profile.monthlyBudget) and is baked
+// into the /api/stats payload server-side, so the dashboard reads the payload
+// directly — no more client-side localStorage overlay.
+const stats = computed(() => rawStats.value)
 
-// The "Monthly budget" edit dialog, opened from the balance tile's pencil.
-const budgetModalOpen = ref(false)
+// Onboarding rides along in the /api/stats payload (stats.onboarded) — one
+// resilient fetch, no separate settings request that can fail on its own. A
+// brand-new user (no budget set) gets the unskippable welcome modal. Null stats
+// (still loading or errored) → no modal, so onboarded users never see a flash.
+const needsOnboarding = computed(() => !!stats.value && !stats.value.onboarded)
+
+// A saved budget (onboarding or edit) shifts income-derived figures — refresh
+// the stats payload, which also carries the updated onboarded flag.
+async function onBudgetSaved() {
+  await refresh()
+}
+
+// The "Monthly budget" edit dialog, opened from the balance tile's pencil —
+// state is shared (useBudgetModal) so the header account menu can open it too.
+const { isOpen: budgetModalOpen } = useBudgetModal()
 
 const monthLabel = formatMonthLabel()
 
@@ -71,35 +79,12 @@ const monthLabel = formatMonthLabel()
 // most ONE guardian message per day — the single most severe signal.
 useNudges(stats)
 
-// --- Hero count-up animation ------------------------------------------------
-const reducedMotion = useReducedMotion()
-const animatedTotal = ref(0)
-function countUp(target: number) {
-  if (import.meta.server || reducedMotion.value) {
-    animatedTotal.value = target
-    return
-  }
-  const duration = 1100
-  const startTime = performance.now()
-  const step = (now: number) => {
-    const t = Math.min(1, (now - startTime) / duration)
-    const eased = 1 - Math.pow(1 - t, 4) // ease-out quart
-    animatedTotal.value = target * eased
-    if (t < 1) requestAnimationFrame(step)
-    else animatedTotal.value = target
-  }
-  requestAnimationFrame(step)
-  // Safety net: browsers throttle rAF in background/hidden tabs, which would
-  // strand the figure mid-count — always land on the target.
-  window.setTimeout(() => {
-    animatedTotal.value = target
-  }, duration + 200)
-}
-watch(
-  () => stats.value?.thisMonthTotal,
-  (v) => countUp(v ?? 0),
-  { immediate: true }
-)
+// --- Count-up tickers ---------------------------------------------------
+// One shared composable (useCountUp) drives the hero figure and the three
+// metric tiles; it snaps instantly under prefers-reduced-motion.
+const animatedTotal = useCountUp(() => stats.value?.thisMonthTotal)
+const animatedBalance = useCountUp(() => stats.value?.balance)
+const animatedSavingsRate = useCountUp(() => stats.value?.savingsRate)
 
 // --- Derived display values -------------------------------------------------
 // Spending DOWN is good news, so the tones are inverted from the raw sign.
@@ -124,6 +109,7 @@ const monthDiff = computed(() => {
   if (!stats.value) return 0
   return stats.value.thisMonthTotal - stats.value.lastMonthTotal
 })
+const animatedMonthDiff = useCountUp(() => monthDiff.value)
 const signedMoney = (v: number) =>
   `${v > 0 ? '+' : v < 0 ? '−' : ''}${formatMoney(Math.abs(v))}`
 
@@ -138,6 +124,18 @@ const recentEntries = computed(() => {
   const rows = (stats.value?.recent ?? []).filter((e) => !hiddenIds.value.includes(e.id))
   return [...pendingAdds.value, ...rows].slice(0, 6)
 })
+
+// A truly fresh account (ROADMAP §3): onboarded (budget set) but not a single
+// expense ever — allTimeTotal covers all history, so this can't false-positive
+// on a quiet month. The optimistic-adds check flips the hero to its normal
+// state the instant the first quick-add closes, before the stats refetch.
+const isFresh = computed(
+  () =>
+    !!stats.value &&
+    stats.value.onboarded &&
+    stats.value.allTimeTotal === 0 &&
+    pendingAdds.value.length === 0
+)
 </script>
 
 <template>
@@ -154,6 +152,8 @@ const recentEntries = computed(() => {
         >
           <Coins class="h-3.5 w-3.5 text-positive" aria-hidden="true" />
           <select
+            id="currency"
+            name="currency"
             v-model="currencyModel"
             class="cursor-pointer appearance-none bg-transparent pr-4 font-mono text-xs font-medium text-inherit outline-none"
             aria-label="Display currency"
@@ -177,8 +177,34 @@ const recentEntries = computed(() => {
         {{ formatMoney(animatedTotal) }}
       </p>
 
+      <!-- Fresh account (post-onboarding, zero entries ever): swap the empty
+           delta/pace lines for a guided "press N" prompt. The whole prompt is
+           one big button so mouse/touch users aren't left out of the shortcut. -->
+      <div v-if="!pending && stats && isFresh" class="mt-6 flex justify-center">
+        <button
+          type="button"
+          class="group flex items-center gap-4 rounded-2xl border border-dashed border-edge/20 px-6 py-4 text-left transition-colors duration-200 hover:border-positive/50"
+          @click="openQuickAdd()"
+        >
+          <span
+            class="key-hint relative grid h-12 w-12 shrink-0 place-items-center rounded-xl border border-black/10 bg-white font-mono text-xl font-bold text-ink shadow-sm dark:border-white/15 dark:bg-zinc-900"
+            aria-hidden="true"
+          >
+            N
+          </span>
+          <span>
+            <span class="block font-medium text-ink">
+              Press <span class="font-mono font-bold">N</span> to log your first expense
+            </span>
+            <span class="block text-sm text-ink-faint">
+              or click here — it takes about ten seconds
+            </span>
+          </span>
+        </button>
+      </div>
+
       <!-- Month-over-month change -->
-      <p v-if="!pending && stats" class="mt-4 flex items-center justify-center gap-2 text-sm">
+      <p v-else-if="!pending && stats" class="mt-4 flex items-center justify-center gap-2 text-sm">
         <span
           v-if="stats.momChangePct !== null"
           class="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 font-mono text-xs font-medium tnum"
@@ -203,7 +229,7 @@ const recentEntries = computed(() => {
            Rose when the pace would blow past income or the total budget —
            an early warning while behaviour can still change. -->
       <p
-        v-if="!pending && stats"
+        v-if="!pending && stats && !isFresh"
         class="mt-2 flex items-center justify-center gap-1.5 text-sm text-ink-soft"
       >
         <Gauge class="h-4 w-4" aria-hidden="true" />
@@ -216,7 +242,7 @@ const recentEntries = computed(() => {
         </span>
         this month
         <span v-if="stats.paceOverLimit" class="font-medium text-negative">
-          · over {{ stats.projectedMonthTotal > stats.monthlyIncome ? 'income' : 'budget' }}
+          · over {{ stats.projectedMonthTotal > stats.monthlyIncome - stats.thisMonthSaved ? 'income' : 'budget' }}
         </span>
       </p>
     </section>
@@ -243,8 +269,8 @@ const recentEntries = computed(() => {
           <SkeletonStatCard v-if="pending" :stagger="0" />
           <StatCard
             v-else
-            label="Total balance"
-            :value="formatMoney(stats?.balance ?? 0)"
+            label="Safe to Spend"
+            :value="formatMoney(animatedBalance)"
             :icon="Wallet"
           >
             <!-- Supporting line doubles as the budget-edit affordance. -->
@@ -277,7 +303,7 @@ const recentEntries = computed(() => {
           <StatCard
             v-else
             label="Monthly change"
-            :value="signedMoney(monthDiff)"
+            :value="signedMoney(animatedMonthDiff)"
             sub="vs last month"
             :icon="ArrowUpDown"
             :delta="stats?.momChangePct !== null ? formatPercent(stats?.momChangePct ?? 0) : null"
@@ -290,8 +316,8 @@ const recentEntries = computed(() => {
           <StatCard
             v-else
             label="Savings rate"
-            :value="`${(stats?.savingsRate ?? 0).toFixed(1)}%`"
-            sub="of monthly income kept"
+            :value="`${animatedSavingsRate.toFixed(1)}%`"
+            sub="of income saved to goals"
             :icon="PiggyBank"
             :delta-tone="savingsTone"
           />
@@ -312,14 +338,16 @@ const recentEntries = computed(() => {
               class="mt-6"
               :budgets="stats.budgets"
             />
-            <p v-else class="mt-6 text-sm text-ink-faint">No categories yet.</p>
+            <!-- Ghost rings preview what the widget becomes (ROADMAP §3). -->
+            <EmptyRings v-else class="mt-4" @action="openQuickAdd()" />
           </ClientOnly>
         </WidgetBoundary>
       </section>
 
       <!-- ── Savings goals ──────────────────────────────────────────── -->
-      <!-- Client-only: goals live in localStorage, so SSR has nothing to
-           render and would only mismatch. -->
+      <!-- Client-only: goals are fetched from /api/goals on the client (with
+           the display currency applied at render), so SSR has nothing to paint
+           and would only mismatch. -->
       <ClientOnly>
         <SavingsGoals class="animate-rise mt-4" style="animation-delay: 0.36s" />
       </ClientOnly>
@@ -338,9 +366,8 @@ const recentEntries = computed(() => {
                 class="mt-4"
                 :segments="stats.breakdown"
               />
-              <p v-else class="mt-6 text-sm text-ink-faint">
-                No spending recorded this month yet. Add an expense to see the breakdown.
-              </p>
+              <!-- Ghost bubble pack previews the breakdown (ROADMAP §3). -->
+              <EmptyBubbles v-else class="mt-4" @action="openQuickAdd()" />
             </ClientOnly>
           </WidgetBoundary>
         </div>
@@ -396,27 +423,24 @@ const recentEntries = computed(() => {
               </li>
             </TransitionGroup>
 
-            <!-- First-run: nothing tracked yet — point straight at the action. -->
-            <div v-else class="py-8 text-center">
-              <p class="text-sm text-ink-soft">
-                No entries yet — your spending story starts here.
-              </p>
-              <button type="button" class="btn btn-primary mt-4" @click="openQuickAdd()">
-                Add your first expense
-              </button>
-            </div>
+            <!-- First-run: ghost rows preview the list shape (ROADMAP §3). -->
+            <EmptyEntries v-else class="mt-2" @action="openQuickAdd()" />
           </WidgetBoundary>
         </div>
       </section>
     </template>
 
-    <!-- Monthly budget editor (client-only: the value lives in localStorage). -->
+    <!-- Monthly budget editor + first-run onboarding (client-only). Budget now
+         persists to the DB (Profile.monthlyBudget) via /api/settings. -->
     <ClientOnly>
       <EditBudgetModal
         :open="budgetModalOpen"
         :current-income="stats?.monthlyIncome ?? 0"
         @close="budgetModalOpen = false"
+        @saved="onBudgetSaved"
       />
+      <!-- Unskippable: shows until a new user sets their monthly budget. -->
+      <WelcomeModal v-if="needsOnboarding" @saved="onBudgetSaved" />
     </ClientOnly>
   </div>
 </template>
@@ -436,5 +460,29 @@ const recentEntries = computed(() => {
 }
 .recent-leave-to {
   opacity: 0;
+}
+
+/* Guided hero: a soft accent halo pulses off the N keycap, drawing the eye to
+   the one action a fresh account has. The global reduced-motion rule zeroes
+   animation-duration, collapsing this to a static (invisible) ring. */
+.key-hint::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 16px;
+  border: 2px solid rgb(var(--accent) / 0.5);
+  animation: key-pulse 2.2s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+  pointer-events: none;
+}
+@keyframes key-pulse {
+  0% {
+    opacity: 0.7;
+    transform: scale(0.92);
+  }
+  70%,
+  100% {
+    opacity: 0;
+    transform: scale(1.18);
+  }
 }
 </style>

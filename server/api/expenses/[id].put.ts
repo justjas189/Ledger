@@ -4,11 +4,13 @@
 import { Prisma } from '@prisma/client'
 
 export default defineEventHandler(async (event) => {
+  const user = await requireUser(event)
   const id = getRouterParam(event, 'id')
 
-  // Confirm it exists first, so we can return a clean 404 rather than letting
-  // the update throw a less-friendly database error.
-  const existing = await prisma.expense.findUnique({ where: { id } })
+  // Confirm it exists AND belongs to this user: both missing and someone
+  // else's rows return a clean 404 (no existence leak, no cross-tenant edit)
+  // rather than a raw database error.
+  const existing = await prisma.expense.findFirst({ where: { id, userId: user.id } })
   if (!existing) {
     throw createError({ statusCode: 404, statusMessage: 'Expense not found.' })
   }
@@ -16,8 +18,8 @@ export default defineEventHandler(async (event) => {
   const body = await readBody(event)
   const input = parseExpenseInput(body)
 
-  const category = await prisma.category.findUnique({
-    where: { id: input.categoryId }
+  const category = await prisma.category.findFirst({
+    where: { id: input.categoryId, userId: user.id }
   })
   if (!category) {
     throw createError({

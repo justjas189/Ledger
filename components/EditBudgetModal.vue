@@ -1,10 +1,9 @@
 <script setup lang="ts">
-// Edit the monthly income / budget limit (see useMonthlyBudget).
-// Same small Modal the savings-goals form uses, so the two money dialogs
-// read as one family. The field works in the ACTIVE display currency —
-// the symbol and the prefilled figure follow the dropdown — and converts
+// Edit the monthly income / budget limit. Persists to the DB via
+// PUT /api/settings (Profile.monthlyBudget) — the value used to live in
+// localStorage; multi-tenant moved it server-side. The field works in the
+// ACTIVE display currency (symbol + prefill follow the dropdown) and converts
 // back to base USD on save, the storage convention for every amount.
-import { RotateCcw } from 'lucide-vue-next'
 import { CURRENCY_OPTIONS } from '~/composables/useCurrency'
 
 const props = defineProps<{
@@ -13,15 +12,15 @@ const props = defineProps<{
   currentIncome: number
 }>()
 
-const emit = defineEmits<{ close: [] }>()
+const emit = defineEmits<{ close: []; saved: [] }>()
 
-const { override, set, clear } = useMonthlyBudget()
 const { active, rates, convert } = useCurrency()
 const { formatMoney } = useFormatters()
 const toast = useToast()
 
 const amountInput = ref('')
 const inputError = ref('')
+const saving = ref(false)
 
 const symbol = computed(
   () => CURRENCY_OPTIONS.find((o) => o.code === active.value)?.symbol ?? '$'
@@ -39,7 +38,7 @@ watch(
   }
 )
 
-function submit() {
+async function submit() {
   const amount = Number(amountInput.value)
   if (!amountInput.value || !Number.isFinite(amount) || amount <= 0) {
     inputError.value = 'Enter a monthly budget greater than 0.'
@@ -47,18 +46,19 @@ function submit() {
   }
   // Back to base USD at the same rate the prefill used.
   const usd = amount / rates.value[active.value]
-  if (!set(usd)) {
-    inputError.value = 'That amount could not be saved.'
-    return
+  saving.value = true
+  inputError.value = ''
+  try {
+    await $fetch('/api/settings', { method: 'PUT', body: { monthlyBudget: usd } })
+    toast.success(`Monthly budget set to ${formatMoney(usd)}.`)
+    emit('saved')
+    emit('close')
+  } catch (err: unknown) {
+    const body = (err as { data?: { data?: { fieldErrors?: Record<string, string> } } })?.data
+    inputError.value = body?.data?.fieldErrors?.monthlyBudget || 'That amount could not be saved.'
+  } finally {
+    saving.value = false
   }
-  toast.success(`Monthly budget set to ${formatMoney(usd)}.`)
-  emit('close')
-}
-
-function resetToDefault() {
-  clear()
-  toast.info('Monthly budget reset to the configured default.')
-  emit('close')
 }
 </script>
 
@@ -97,17 +97,12 @@ function resetToDefault() {
     </form>
 
     <template #footer>
-      <button
-        v-if="override !== null"
-        type="button"
-        class="btn btn-ghost mr-auto !px-3 text-xs"
-        @click="resetToDefault()"
-      >
-        <RotateCcw class="h-3.5 w-3.5" aria-hidden="true" />
-        Reset to default
+      <button type="button" class="btn btn-ghost" :disabled="saving" @click="emit('close')">
+        Cancel
       </button>
-      <button type="button" class="btn btn-ghost" @click="emit('close')">Cancel</button>
-      <button type="button" class="btn btn-primary" @click="submit()">Save budget</button>
+      <button type="button" class="btn btn-primary" :disabled="saving" @click="submit()">
+        {{ saving ? 'Saving…' : 'Save budget' }}
+      </button>
     </template>
   </Modal>
 </template>

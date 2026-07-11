@@ -11,6 +11,7 @@ import type { Prisma } from '@prisma/client'
 import type { ExpenseListResponse } from '~/types/expense'
 
 export default defineEventHandler(async (event): Promise<ExpenseListResponse> => {
+  const user = await requireUser(event)
   const q = getQuery(event)
 
   // Clamp pagination to safe bounds so nobody can request 10,000 rows at once.
@@ -22,7 +23,8 @@ export default defineEventHandler(async (event): Promise<ExpenseListResponse> =>
     typeof q.categoryId === 'string' && q.categoryId ? q.categoryId : undefined
 
   // Build the WHERE clause piece by piece — only add a condition if it applies.
-  const where: Prisma.ExpenseWhereInput = {}
+  // Tenant scope first — every filter below only narrows within this user.
+  const where: Prisma.ExpenseWhereInput = { userId: user.id }
   if (search) where.description = { contains: search, mode: 'insensitive' }
   if (categoryId) where.categoryId = categoryId
 

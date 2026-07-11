@@ -44,15 +44,37 @@ onMounted(() => {
     drawn.value = true
   })
 })
+
+// Each ring drills down into /expenses pre-filtered to its category and the
+// dashboard's month (first → last day, local time — the same calendar the
+// stats buckets use). The expenses page reads these query params on load.
+const pad = (n: number) => String(n).padStart(2, '0')
+const monthRange = computed(() => {
+  const now = new Date()
+  const y = now.getFullYear()
+  const m = now.getMonth()
+  return {
+    from: `${y}-${pad(m + 1)}-01`,
+    to: `${y}-${pad(m + 1)}-${pad(new Date(y, m + 1, 0).getDate())}`
+  }
+})
+const drilldownTo = (categoryId: string) => ({
+  path: '/expenses',
+  query: { categoryId, from: monthRange.value.from, to: monthRange.value.to }
+})
 </script>
 
 <template>
   <ul class="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 lg:grid-cols-6">
-    <li
-      v-for="(b, i) in rows"
-      :key="b.categoryId"
-      class="group flex flex-col items-center text-center"
-    >
+    <li v-for="(b, i) in rows" :key="b.categoryId" class="flex justify-center">
+      <!-- The whole ring is a drill-down link into the filtered expenses list.
+           The SVG keeps its own aria-label, so the link names the action. -->
+      <NuxtLink
+        :to="drilldownTo(b.categoryId)"
+        class="group flex flex-col items-center rounded-2xl px-2 py-1 text-center transition-colors duration-200 hover:bg-edge/5"
+        :aria-label="`View ${b.name} expenses for this month`"
+        :title="`View ${b.name} expenses for this month`"
+      >
       <div class="relative">
         <svg
           :width="SIZE"
@@ -117,6 +139,7 @@ onMounted(() => {
       <p class="font-mono text-xs text-ink-faint tnum">
         {{ formatMoney(b.spent) }} / {{ formatMoney(b.budget) }}
       </p>
+      </NuxtLink>
     </li>
   </ul>
 </template>

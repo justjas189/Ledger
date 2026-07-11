@@ -39,6 +39,7 @@ function median(values: number[]) {
 const pad2 = (n: number) => String(n).padStart(2, '0')
 
 export default defineEventHandler(async (event): Promise<ForecastResponse> => {
+  const user = await requireUser(event)
   const tz = resolveTz(getQuery(event).tz)
 
   // Where "now" sits on the calendar (m is 1-based), matching /api/stats.
@@ -55,7 +56,7 @@ export default defineEventHandler(async (event): Promise<ForecastResponse> => {
     : new Date(p.y, p.m - 1, p.d - HISTORY_DAYS)
   const rows = await prisma.expense.findMany({
     select: { date: true, amount: true },
-    where: { date: { gte: windowStart } }
+    where: { userId: user.id, date: { gte: windowStart } }
   })
   if (rows.length === 0) return EMPTY
 

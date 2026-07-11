@@ -55,6 +55,16 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
 
 <template>
   <div class="relative min-h-screen overflow-x-clip">
+    <!-- Skip link (A11y sweep, ROADMAP §5): first tab stop on every page.
+         sr-only until keyboard focus lands on it, then it pops in above the
+         floating header so keyboard users can jump past the chrome. -->
+    <a
+      href="#main-content"
+      class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-xl focus:bg-emerald-600 focus:px-4 focus:py-2.5 focus:text-sm focus:font-semibold focus:text-white focus:shadow-lg"
+    >
+      Skip to main content
+    </a>
+
     <!-- Paper-grain texture: a tiled SVG fractal-noise data URI over the
          body background. Fixed, click-through, behind all content; opacity
          lives in classes (not inline) so the dark: variant can win. -->
@@ -66,7 +76,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
 
     <!-- ── Floating brand chip + month ──────────────────────────────── -->
     <header
-      class="pointer-events-none fixed inset-x-0 top-4 z-40 flex items-center justify-between px-4 sm:top-6 sm:px-6"
+      class="pointer-events-none fixed inset-x-0 z-40 flex items-center justify-between px-4 top-[calc(1rem+env(safe-area-inset-top))] sm:px-6 sm:top-[calc(1.5rem+env(safe-area-inset-top))]"
     >
       <NuxtLink
         to="/"
@@ -83,14 +93,14 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
           aria-label="Vaulted Logo"
         >
           <g>
-            <path d="M 25 28 Q 50 8 75 28" stroke="#00A859" stroke-width="7" stroke-linecap="round" />
-            <path d="M 12 32 C 12 65 30 90 50 98 C 70 90 88 65 88 32 L 74 36 C 70 60 60 80 50 86 C 40 80 30 60 26 36 Z" fill="#00A859" />
-            <circle cx="50" cy="52" r="12" stroke="#00A859" stroke-width="4" />
-            <circle cx="50" cy="52" r="4" fill="#00A859" />
-            <line x1="50" y1="30" x2="50" y2="36" stroke="#00A859" stroke-width="4" stroke-linecap="round" />
-            <line x1="50" y1="68" x2="50" y2="74" stroke="#00A859" stroke-width="4" stroke-linecap="round" />
-            <line x1="30" y1="52" x2="36" y2="52" stroke="#00A859" stroke-width="4" stroke-linecap="round" />
-            <line x1="64" y1="52" x2="70" y2="52" stroke="#00A859" stroke-width="4" stroke-linecap="round" />
+            <path d="M 25 28 Q 50 8 75 28" stroke="#00A859" stroke-width="7" stroke-linecap="round"/>
+            <path d="M 12 32 C 12 65 30 90 50 98 C 70 90 88 65 88 32 L 74 36 C 70 60 60 80 50 86 C 40 80 30 60 26 36 Z" fill="#004B36"/>
+            <circle cx="50" cy="52" r="12" stroke="#00A859" stroke-width="4"/>
+            <circle cx="50" cy="52" r="4" fill="#00A859"/>
+            <line x1="50" y1="30" x2="50" y2="36" stroke="#00A859" stroke-width="4" stroke-linecap="round"/>
+            <line x1="50" y1="68" x2="50" y2="74" stroke="#00A859" stroke-width="4" stroke-linecap="round"/>
+            <line x1="30" y1="52" x2="36" y2="52" stroke="#00A859" stroke-width="4" stroke-linecap="round"/>
+            <line x1="64" y1="52" x2="70" y2="52" stroke="#00A859" stroke-width="4" stroke-linecap="round"/>
           </g>
           <text x="100" y="70" font-family="'Inter', system-ui, sans-serif" font-weight="800" font-size="48" fill="currentColor" letter-spacing="-1">Vaulted</text>
         </svg>
@@ -118,12 +128,19 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
         <span class="glass rounded-full px-4 py-2 font-mono text-xs text-ink-soft tnum">
           {{ formatMonthLabel() }}
         </span>
+        <!-- Account chip: email, theme/currency shortcuts, edit budget, sign out. -->
+        <AccountMenu />
       </div>
     </header>
 
     <!-- ── Focus stage: page content ────────────────────────────────── -->
+    <!-- id + tabindex="-1": the skip link's target — focusable by the anchor
+         jump, never in the tab order. outline-none because a whole-page
+         outline on that programmatic focus would just be noise. -->
     <main
-      class="relative mx-auto w-full max-w-6xl px-4 pb-36 pt-24 transition-all duration-500 [transition-timing-function:cubic-bezier(0.32,0.72,0,1)] sm:px-6 sm:pt-28"
+      id="main-content"
+      tabindex="-1"
+      class="relative mx-auto w-full max-w-6xl px-4 pb-[calc(9rem+env(safe-area-inset-bottom))] pt-24 outline-none transition-all duration-500 [transition-timing-function:cubic-bezier(0.32,0.72,0,1)] sm:px-6 sm:pt-28"
       :class="stageDimmed && 'scale-[0.98] opacity-70 blur-[4px]'"
     >
       <slot />

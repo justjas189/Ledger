@@ -5,9 +5,12 @@
 // Alternative you could add later: a "soft delete" — add a `deletedAt` column
 // and filter it out instead of removing the row, so nothing is ever truly lost.
 export default defineEventHandler(async (event) => {
+  const user = await requireUser(event)
   const id = getRouterParam(event, 'id')
 
-  const existing = await prisma.expense.findUnique({ where: { id } })
+  // Scope the existence check to the owner: another user's id 404s here
+  // instead of being deletable.
+  const existing = await prisma.expense.findFirst({ where: { id, userId: user.id } })
   if (!existing) {
     throw createError({ statusCode: 404, statusMessage: 'Expense not found.' })
   }

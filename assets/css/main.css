@@ -53,9 +53,20 @@
     @apply bg-white text-ink dark:bg-zinc-900;
   }
 
-  /* Give keyboard users a clear, on-brand focus ring everywhere. */
+  /* Give keyboard users a clear, on-brand focus ring everywhere (A11y sweep,
+     ROADMAP §5). A real outline, not a box-shadow ring: outlines can't be
+     clipped by overflow-hidden ancestors (table cards), don't fight existing
+     shadows, follow border-radius, and need no offset-color guess — the 2px
+     gap shows whatever surface is really behind. accent-strong is the
+     contrast-safe emerald step in both themes (≥3:1 non-text contrast). */
   :focus-visible {
-    @apply outline-none ring-2 ring-accent-strong ring-offset-2 ring-offset-stone-50 dark:ring-offset-zinc-950;
+    outline: 2px solid rgb(var(--accent-strong));
+    outline-offset: 2px;
+  }
+  /* Form fields already draw their own emerald border + ring on focus —
+     skip the doubled outline there. */
+  .field:focus-visible {
+    outline: none;
   }
 
   ::selection {
@@ -168,4 +179,23 @@
   100% {
     transform: translateX(100%);
   }
+}
+
+/* ------------------------------------------------------------------ *
+ * Route transitions — applied by app.pageTransition (nuxt.config.ts).
+ * Quick fade with a small vertical drift: enter rises in, leave lifts
+ * away. Kept under 250ms so navigation never feels gated. The global
+ * reduced-motion rule in @layer base zeroes these transition durations.
+ * ------------------------------------------------------------------ */
+.page-enter-active,
+.page-leave-active {
+  transition: opacity 0.22s ease, transform 0.22s ease;
+}
+.page-enter-from {
+  opacity: 0;
+  transform: translateY(10px);
+}
+.page-leave-to {
+  opacity: 0;
+  transform: translateY(-8px);
 }

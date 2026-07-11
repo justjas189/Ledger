@@ -26,6 +26,31 @@ export interface ExpenseDTO {
   updatedAt: string
 }
 
+/**
+ * A savings goal as the browser receives it. Money fields are plain numbers in
+ * base USD (the server converts Prisma's Decimal); dates are ISO strings.
+ * `totalSaved`/`thisMonthSaved` are aggregated from the contributions ledger
+ * server-side (there is no flat "saved" column anymore).
+ *
+ * `target`/`targetDate` are null for an OPEN-ENDED FUND (e.g. "Emergency
+ * Fund") — same bucket, same ledger, no finish line. A `targetDate` never
+ * appears without a `target` (server invariant).
+ */
+export interface SavingsGoalDTO {
+  id: string
+  name: string
+  /** Target amount, base USD — null for an open-ended fund. */
+  target: number | null
+  /** Deadline, ISO string — null when open-ended or no deadline set. */
+  targetDate: string | null
+  /** Sum of ALL contributions to this goal, base USD. */
+  totalSaved: number
+  /** Sum of contributions dated within the current calendar month, base USD. */
+  thisMonthSaved: number
+  createdAt: string
+  updatedAt: string
+}
+
 /** The set of filters the expenses list can be narrowed by. */
 export interface ExpenseFilters {
   search: string
@@ -100,10 +125,19 @@ export interface StatsResponse {
   allTimeTotal: number
   /** Configured monthly income (see server/utils/budgets.ts). */
   monthlyIncome: number
-  /** Income minus this month's spend. */
+  /**
+   * "Safe to spend": income minus this month's spend AND this month's savings
+   * contributions — money committed to a goal is no longer available cash.
+   */
   balance: number
-  /** (income - spend) / income, as a percentage. */
+  /**
+   * Share of income deliberately put into savings goals this month
+   * (thisMonthSaved / income), as a percentage. Explicit contributions, not the
+   * old "whatever wasn't spent" residual.
+   */
   savingsRate: number
+  /** Savings-goal contributions dated in the current month, base USD. */
+  thisMonthSaved: number
   /**
    * Spending pace: what the month-end total will be if spending continues at
    * the current daily rate — (spent / dayOfMonth) * daysInMonth.
@@ -119,5 +153,11 @@ export interface StatsResponse {
   dailyTrend: DailyTrendPoint[]
   /** This month's spend vs budget for every category. */
   budgets: BudgetComparison[]
+  /**
+   * True once the user has set their own monthly budget (Profile.monthlyBudget).
+   * False for a brand-new user → the dashboard shows the onboarding modal. Rides
+   * in this payload so onboarding needs no separate (failure-prone) fetch.
+   */
+  onboarded: boolean
   recent: ExpenseDTO[]
 }

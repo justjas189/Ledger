@@ -18,10 +18,6 @@ import type { StatsResponse } from '~/types/expense'
 import { HISTORY_DAYS } from '~/composables/useExpenseHistory'
 
 const { isOpen, close } = useReportCard()
-// The user's budget override re-derives income / savings rate client-side;
-// applied inside the card computed so an edit re-renders an open card too.
-const { load: loadBudget, adjust: adjustForBudget } = useMonthlyBudget()
-if (import.meta.client) loadBudget()
 const { peakForMonth } = useStreak()
 const { formatMoney, formatMonthLabel, formatPercent } = useFormatters()
 const toast = useToast()
@@ -66,7 +62,9 @@ const clipName = (name: string) => (name.length > 16 ? `${name.slice(0, 15)}…`
 
 // Everything the SVG prints, precomputed as plain strings.
 const card = computed(() => {
-  const s = stats.value ? adjustForBudget(stats.value) : null
+  // Income is authoritative in the /api/stats payload now (Profile.monthlyBudget),
+  // so the card reads it directly — no client-side budget overlay.
+  const s = stats.value
   if (!s) return null
 
   const monthKey = localMonthKey()
@@ -137,7 +135,7 @@ const card = computed(() => {
       : '—',
     busiestSub: busiest ? `${formatMoney(busiest.total)} spent` : 'no entries yet',
     savingsName: hasIncome ? `${s.savingsRate.toFixed(1)}%` : '—',
-    savingsSub: hasIncome ? 'of income kept' : 'no income set'
+    savingsSub: hasIncome ? 'saved to goals' : 'no income set'
   }
 })
 
@@ -250,14 +248,14 @@ async function share() {
         <!-- Brand row: the shield mark (favicon.svg, inlined so the PNG
              export never fetches an external image) + wordmark -->
         <g transform="translate(44 38) scale(0.26)" fill="none">
-          <path d="M 25 28 Q 50 8 75 28" stroke="#00A859" stroke-width="7" stroke-linecap="round" />
-          <path d="M 12 32 C 12 65 30 90 50 98 C 70 90 88 65 88 32 L 74 36 C 70 60 60 80 50 86 C 40 80 30 60 26 36 Z" fill="#00A859" />
-          <circle cx="50" cy="52" r="12" stroke="#00A859" stroke-width="4" />
-          <circle cx="50" cy="52" r="4" fill="#00A859" />
-          <line x1="50" y1="30" x2="50" y2="36" stroke="#00A859" stroke-width="4" stroke-linecap="round" />
-          <line x1="50" y1="68" x2="50" y2="74" stroke="#00A859" stroke-width="4" stroke-linecap="round" />
-          <line x1="30" y1="52" x2="36" y2="52" stroke="#00A859" stroke-width="4" stroke-linecap="round" />
-          <line x1="64" y1="52" x2="70" y2="52" stroke="#00A859" stroke-width="4" stroke-linecap="round" />
+          <path d="M 25 28 Q 50 8 75 28" stroke="#00A859" stroke-width="7" stroke-linecap="round"/>
+          <path d="M 12 32 C 12 65 30 90 50 98 C 70 90 88 65 88 32 L 74 36 C 70 60 60 80 50 86 C 40 80 30 60 26 36 Z" fill="#004B36"/>
+          <circle cx="50" cy="52" r="12" stroke="#00A859" stroke-width="4"/>
+          <circle cx="50" cy="52" r="4" fill="#00A859"/>
+          <line x1="50" y1="30" x2="50" y2="36" stroke="#00A859" stroke-width="4" stroke-linecap="round"/>
+          <line x1="50" y1="68" x2="50" y2="74" stroke="#00A859" stroke-width="4" stroke-linecap="round"/>
+          <line x1="30" y1="52" x2="36" y2="52" stroke="#00A859" stroke-width="4" stroke-linecap="round"/>
+          <line x1="64" y1="52" x2="70" y2="52" stroke="#00A859" stroke-width="4" stroke-linecap="round"/>
         </g>
         <text x="78" y="57" :font-family="SANS" font-size="15" font-weight="700" fill="#FAFAFA">
           Vaulted
