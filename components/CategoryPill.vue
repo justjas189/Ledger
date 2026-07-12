@@ -16,10 +16,13 @@ const props = withDefaults(
   { icon: null, size: 'md' }
 )
 
-const { resolveIcon } = useCategoryIcons()
+const { resolveIcon, getCategoryIcon } = useCategoryIcons()
 const { categoryColor, withAlpha } = useCategoryColors()
 
-const iconComponent = computed(() => resolveIcon(props.icon))
+// Resolve order: explicit DB icon → keyword-inferred icon from the name → null (dot fallback).
+const iconComponent = computed(() =>
+  resolveIcon(props.icon) ?? resolveIcon(getCategoryIcon(props.name))
+)
 const hue = computed(() => categoryColor(props.name, props.color))
 </script>
 

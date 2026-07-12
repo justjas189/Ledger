@@ -13,7 +13,7 @@ import type { ExpenseDTO, ExpenseListResponse } from '~/types/expense'
 
 const { formatMoney, formatDateInput, formatMonthLabel } = useFormatters()
 const { categoryColor, withAlpha } = useCategoryColors()
-const { resolveIcon } = useCategoryIcons()
+const { resolveIcon, getCategoryIcon } = useCategoryIcons()
 
 const today = new Date()
 const todayKey = formatDateInput(today)
@@ -273,8 +273,8 @@ function dayAriaLabel(c: DayCell): string {
               aria-hidden="true"
             >
               <component
-                :is="resolveIcon(e.category?.icon)"
-                v-if="resolveIcon(e.category?.icon)"
+                :is="resolveIcon(e.category?.icon) ?? resolveIcon(getCategoryIcon(e.category?.name ?? ''))"
+                v-if="resolveIcon(e.category?.icon) ?? resolveIcon(getCategoryIcon(e.category?.name ?? ''))"
                 class="h-3.5 w-3.5"
                 :style="{ color: categoryColor(e.category?.name ?? '', e.category?.color) }"
               />

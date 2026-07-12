@@ -64,11 +64,19 @@ function hasKeyword(haystack: string, keyword: string): boolean {
 }
 
 /**
- * Suggest a seed-category NAME for a piece of free text (a typed description
- * or a whole OCR'd receipt), or null when nothing matches. Callers map the
- * name onto a category id themselves.
+ * Suggest a category NAME for a piece of free text (a typed description or a
+ * whole OCR'd receipt), or null when nothing matches. Callers map the name
+ * onto a category id themselves.
+ *
+ * `customNames` is the user's OWN current category list (from useCategories,
+ * a client fetch — there's no server involvement here at all, see
+ * useReceiptOcr's file header). Pass it so a category with no curated
+ * keyword entry — any self-created one, or a seed category the user renamed
+ * — can still be suggested, by its own name appearing in the text. Without
+ * it, only the six names in CATEGORY_KEYWORDS above can ever come back, no
+ * matter what categories the user actually has.
  */
-export function suggestCategory(text: string): string | null {
+export function suggestCategory(text: string, customNames: string[] = []): string | null {
   const haystack = text.toLowerCase()
   if (!haystack.trim()) return null
   let bestName: string | null = null
@@ -80,5 +88,45 @@ export function suggestCategory(text: string): string | null {
       bestName = name
     }
   }
+  // A category with no curated keyword list gets ONE vote for its own name
+  // appearing in the text — it only wins when nothing scored higher above, so
+  // a real keyword match (e.g. "Starbucks" -> Dining) still takes it.
+  for (const name of customNames) {
+    if (CATEGORY_KEYWORDS[name]) continue // already scored via its own list
+    if (bestVotes < 1 && hasKeyword(haystack, name.toLowerCase())) {
+      bestVotes = 1
+      bestName = name
+    }
+  }
   return bestName
+}
+
+/**
+ * Ask the LLM-backed POST /api/categorize endpoint (NVIDIA NIM, primary +
+ * secondary model fallback) to suggest a category NAME for a piece of free
+ * text — the PRIMARY suggestion path now.
+ * `customNames` is the user's current category list (e.g. from
+ * useCategories() on the client); the endpoint can only ever return one of
+ * these exact names, or null, never something invented.
+ *
+ * Falls back to the local keyword vote (suggestCategory, above) if the
+ * endpoint is unreachable or errors — the same "smart endpoint, dumb offline
+ * fallback" shape as useForecast() vs GET /api/stats/forecast — so a flaky
+ * network or an exhausted API quota degrades the suggestion instead of
+ * breaking it.
+ */
+export async function suggestCategoryAI(
+  text: string,
+  customNames: string[]
+): Promise<string | null> {
+  if (!text.trim() || customNames.length === 0) return null
+  try {
+    const { category } = await $fetch<{ category: string | null }>('/api/categorize', {
+      method: 'POST',
+      body: { text, categories: customNames }
+    })
+    return category
+  } catch {
+    return suggestCategory(text, customNames)
+  }
 }

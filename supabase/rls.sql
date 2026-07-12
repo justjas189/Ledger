@@ -55,7 +55,7 @@ alter table public.profiles
   add constraint profiles_budget_positive
     check (monthly_budget is null or (monthly_budget > 0 and monthly_budget <= 99999999.99)),
   add constraint profiles_currency_valid
-    check (currency in ('USD', 'PHP', 'EUR', 'GBP'));
+    check (currency in ('USD', 'PHP', 'EUR', 'GBP', 'IDR'));
 
 -- savings_goals no longer has a `saved` column (moved to the contributions
 -- ledger) — drop that old check if a prior run added it, and don't re-add it.

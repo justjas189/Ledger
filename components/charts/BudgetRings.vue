@@ -15,6 +15,7 @@ const props = defineProps<{
 
 const { formatMoney } = useFormatters()
 const { categoryColor } = useCategoryColors()
+const { resolveIcon, getCategoryIcon } = useCategoryIcons()
 
 const SIZE = 120
 const THICKNESS = 9
@@ -130,10 +131,22 @@ const drilldownTo = (categoryId: string) => ({
 
       <p class="mt-2 flex max-w-[9rem] items-center gap-1.5 text-sm font-medium text-ink">
         <span
-          class="h-2 w-2 shrink-0 rounded-full"
-          :style="{ backgroundColor: categoryColor(b.name, b.color) }"
+          class="grid h-5 w-5 shrink-0 place-items-center rounded-full"
+          :style="{ backgroundColor: `${categoryColor(b.name, b.color)}29` }"
           aria-hidden="true"
-        />
+        >
+          <component
+            :is="resolveIcon(getCategoryIcon(b.name))"
+            v-if="resolveIcon(getCategoryIcon(b.name))"
+            class="h-3 w-3"
+            :style="{ color: categoryColor(b.name, b.color) }"
+          />
+          <span
+            v-else
+            class="inline-block h-2 w-2 rounded-full"
+            :style="{ backgroundColor: categoryColor(b.name, b.color) }"
+          />
+        </span>
         <span class="truncate">{{ b.name }}</span>
       </p>
       <p class="font-mono text-xs text-ink-faint tnum">

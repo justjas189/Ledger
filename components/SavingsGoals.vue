@@ -369,7 +369,9 @@ onBeforeUnmount(() => {
           <span class="font-mono text-base font-semibold text-ink-faint tnum">68%</span>
         </div>
       </div>
-      <p class="mt-1 font-mono text-xs text-ink-faint tnum">$680 / $1,000</p>
+      <p class="mt-1 font-mono text-xs text-ink-faint tnum">
+        {{ formatMoney(680) }} / {{ formatMoney(1000) }}
+      </p>
       <p class="mx-auto mt-3 max-w-sm text-sm text-ink-soft">
         No goals yet — pick a target and watch the ring fill toward it, like this.
         Open-ended funds work too.

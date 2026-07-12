@@ -14,7 +14,7 @@
 // every formatted figure in the app re-converts instantly when it changes
 // (all money rendering funnels through useFormatters().formatMoney /
 // formatMoneyCompact, which read this).
-export type CurrencyCode = 'USD' | 'PHP' | 'EUR' | 'GBP'
+export type CurrencyCode = 'USD' | 'PHP' | 'EUR' | 'GBP' | 'IDR'
 
 const STORAGE_KEY = 'vaulted-currency'
 const RATES_KEY = 'vaulted-rates'
@@ -26,7 +26,22 @@ export const CURRENCY_LOCALES: Record<CurrencyCode, string> = {
   USD: 'en-US',
   PHP: 'en-PH',
   EUR: 'de-DE',
-  GBP: 'en-GB'
+  GBP: 'en-GB',
+  IDR: 'id-ID'
+}
+
+/**
+ * Decimal places to render per currency. Everything is 2 (cents/centavos)
+ * except IDR: the sen subunit is defunct in practice, so Rupiah amounts are
+ * always shown whole ("Rp 10.000", not "Rp 10.000,00"). Read by
+ * useFormatters().formatMoney.
+ */
+export const CURRENCY_FRACTION_DIGITS: Record<CurrencyCode, number> = {
+  USD: 2,
+  PHP: 2,
+  EUR: 2,
+  GBP: 2,
+  IDR: 0
 }
 
 /**
@@ -38,15 +53,22 @@ export const EXCHANGE_RATES: Record<CurrencyCode, number> = {
   USD: 1,
   PHP: 58,
   EUR: 0.92,
-  GBP: 0.79
+  GBP: 0.79,
+  IDR: 18000
 }
 
 /** Options for the currency dropdown, in display order. */
-export const CURRENCY_OPTIONS: Array<{ code: CurrencyCode; symbol: string; label: string }> = [
-  { code: 'USD', symbol: '$', label: 'US Dollar' },
-  { code: 'PHP', symbol: '₱', label: 'Philippine Peso' },
-  { code: 'EUR', symbol: '€', label: 'Euro' },
-  { code: 'GBP', symbol: '£', label: 'British Pound' }
+export const CURRENCY_OPTIONS: Array<{
+  code: CurrencyCode
+  symbol: string
+  label: string
+  flag: string
+}> = [
+  { code: 'USD', symbol: '$', label: 'US Dollar', flag: '🇺🇸' },
+  { code: 'PHP', symbol: '₱', label: 'Philippine Peso', flag: '🇵🇭' },
+  { code: 'EUR', symbol: '€', label: 'Euro', flag: '🇪🇺' },
+  { code: 'GBP', symbol: '£', label: 'British Pound', flag: '🇬🇧' },
+  { code: 'IDR', symbol: 'Rp', label: 'Indonesian Rupiah', flag: '🇮🇩' }
 ]
 
 const isCurrencyCode = (v: unknown): v is CurrencyCode =>

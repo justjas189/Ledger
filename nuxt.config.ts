@@ -14,7 +14,7 @@ export default defineNuxtConfig({
   // so phone-testing via localtunnel doesn't hit "Blocked request".
   vite: {
     server: {
-      allowedHosts: ['.loca.lt']
+      allowedHosts: ['.loca.lt', '.trycloudflare.com']
     }
   },
 

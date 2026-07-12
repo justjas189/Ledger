@@ -151,7 +151,7 @@ function toTitleCase(s: string) {
     .replace(/(^|[\s\-/])([a-z])/g, (match) => match.toUpperCase())
 }
 
-export function parseReceiptText(rawText: string): ReceiptScan {
+export function parseReceiptText(rawText: string, customNames: string[] = []): ReceiptScan {
   const lines = rawText
     .split(/\r?\n/)
     .map((l) => l.trim())
@@ -160,7 +160,7 @@ export function parseReceiptText(rawText: string): ReceiptScan {
     description: extractMerchant(lines),
     amount: extractAmount(lines),
     date: extractDate(rawText),
-    categoryName: suggestCategory(rawText),
+    categoryName: suggestCategory(rawText, customNames),
     rawText
   }
 }
@@ -170,8 +170,14 @@ export function useReceiptOcr() {
   /** 0 → 1 recognition progress, for the button label. */
   const progress = ref(0)
 
-  /** Run OCR on an image file and return whatever fields could be parsed. */
-  async function scan(file: File): Promise<ReceiptScan> {
+  /** Run OCR on an image file and return whatever fields could be parsed.
+   *  `customNames` — the user's live category list — is passed straight
+   *  through to suggestCategory (see useAutoCategory) so a self-created
+   *  category can be recognised too, not just the six seed names. This is
+   *  local and instant — the AI gateway (suggestCategoryAI) is no longer
+   *  wired in here; it's reserved for the asynchronous "Natural Language
+   *  Expense Entry" feature instead (see ai_features_roadmap.md). */
+  async function scan(file: File, customNames: string[] = []): Promise<ReceiptScan> {
     scanning.value = true
     progress.value = 0
     try {
@@ -183,7 +189,7 @@ export function useReceiptOcr() {
       })
       try {
         const { data } = await worker.recognize(file)
-        return parseReceiptText(data.text)
+        return parseReceiptText(data.text, customNames)
       } finally {
         await worker.terminate()
       }

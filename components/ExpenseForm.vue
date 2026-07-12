@@ -127,9 +127,15 @@ watch(activeCurrency, (next, prev) => {
 
 // --- Auto-categorization (ROADMAP §3, Bonus) ------------------------------
 // Watch the CREATE form's description and prefill the category dropdown from
-// the keyword map. The suggestion never overrides a human: picking a category
-// by hand — or a receipt scan, which read the whole receipt and knows more
-// than the description line — switches it off for that entry.
+// the local keyword map (useAutoCategory) — synchronous and instant, so it
+// can run on every keystroke with no debounce. The AI gateway
+// (suggestCategoryAI / POST /api/categorize) added real latency here for a
+// live-typing suggestion and has been pulled back out; it's reserved for the
+// asynchronous "Natural Language Expense Entry" feature instead (see
+// ai_features_roadmap.md), where a round-trip is expected and acceptable.
+// The suggestion never overrides a human: picking a category by hand — or a
+// receipt scan, which read the whole receipt and knows more than the
+// description line — switches it off for that entry.
 const categoryTouched = ref(false)
 const suggestedName = ref<string | null>(null)
 
@@ -142,7 +148,7 @@ watch(
   () => form.description,
   (text) => {
     if (!props.open || isEdit.value || categoryTouched.value) return
-    const name = suggestCategory(text)
+    const name = suggestCategory(text, categories.value?.map((c) => c.name) ?? [])
     const match = name
       ? categories.value?.find((c) => c.name.toLowerCase() === name.toLowerCase())
       : undefined
@@ -187,7 +193,7 @@ async function onReceiptChange(event: Event) {
   if (!file) return
 
   try {
-    const parsed = await scan(file)
+    const parsed = await scan(file, categories.value?.map((c) => c.name) ?? [])
     let filled = 0
     if (parsed.description) {
       form.description = parsed.description

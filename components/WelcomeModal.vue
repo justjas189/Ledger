@@ -101,7 +101,7 @@ async function submit() {
           <label for="welcome-currency" class="label">Currency</label>
           <select id="welcome-currency" v-model="currencyModel" class="field">
             <option v-for="o in CURRENCY_OPTIONS" :key="o.code" :value="o.code">
-              {{ o.symbol }} {{ o.code }} · {{ o.label }}
+              {{ o.flag }} {{ o.symbol }} {{ o.code }} · {{ o.label }}
             </option>
           </select>
           <p class="mt-1 text-xs text-ink-faint">

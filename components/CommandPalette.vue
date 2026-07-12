@@ -109,7 +109,7 @@ const commands = computed<Command[]>(() => [
     id: `cur-${o.code}`,
     label: `Display in ${o.label}`,
     keywords: `currency money convert ${o.code}`,
-    hint: activeCurrency.value === o.code ? `${o.symbol} · active` : o.symbol,
+    hint: activeCurrency.value === o.code ? `${o.flag} ${o.symbol} · active` : `${o.flag} ${o.symbol}`,
     section: 'Currency' as const,
     icon: Coins,
     run: () => setCurrency(o.code)

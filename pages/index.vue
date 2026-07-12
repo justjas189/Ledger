@@ -15,6 +15,8 @@ import {
   Minus,
   Pencil,
   PiggyBank,
+  Plus,
+  Settings,
   TrendingDown,
   TrendingUp,
   Wallet
@@ -24,7 +26,8 @@ import type { StatsResponse } from '~/types/expense'
 
 useHead({ title: 'Dashboard · Vaulted' })
 
-const { formatMoney, formatMonthLabel, formatDate, formatPercent } = useFormatters()
+const { formatMoney, formatMoneyLiteral, formatMonthLabel, formatDate, formatPercent } =
+  useFormatters()
 const { active: displayCurrency, set: setCurrency } = useCurrency()
 const { open: openQuickAdd } = useQuickAdd()
 const { pendingAdds, hiddenIds } = useOptimisticExpenses()
@@ -35,6 +38,11 @@ const currencyModel = computed({
   get: () => displayCurrency.value,
   set: (code: CurrencyCode) => setCurrency(code)
 })
+
+// Locale-aware preview next to the picker: shows how the active currency
+// groups/punctuates its own thousands (e.g. "Rp1.000" vs "$1,000.00") — a
+// quick visual cue for what's about to change before the whole page re-renders.
+const thousandsPreview = computed(() => formatMoneyLiteral(1000))
 
 // Fetch on the client (server: false) so the page shell always renders even if
 // the database isn't reachable yet, and so the hero number can count up on load.
@@ -72,6 +80,11 @@ async function onBudgetSaved() {
 // The "Monthly budget" edit dialog, opened from the balance tile's pencil —
 // state is shared (useBudgetModal) so the header account menu can open it too.
 const { isOpen: budgetModalOpen } = useBudgetModal()
+
+// The "Add category" / "Manage categories" dialogs, opened from the Budgets
+// widget header.
+const addCategoryModalOpen = ref(false)
+const manageCategoriesOpen = ref(false)
 
 const monthLabel = formatMonthLabel()
 
@@ -142,10 +155,14 @@ const isFresh = computed(
   <div>
     <!-- ── Hero ─────────────────────────────────────────────────────── -->
     <section class="animate-rise text-center">
-      <div class="flex items-center justify-center gap-2.5">
+      <div class="flex flex-wrap items-center justify-center gap-x-2.5 gap-y-1.5">
         <p class="eyebrow">Total spent · {{ monthLabel }}</p>
         <!-- Display-currency dropdown: every figure in the app is converted
-             from base USD at the selected static rate, then re-rendered. -->
+             from base USD at the selected static rate, then re-rendered.
+             Option text stays short (flag + symbol + code, no spelled-out
+             label) so the pill can't grow wider than the row on mobile —
+             the full name is still reachable via the label's title tooltip
+             and the other pickers (welcome modal, account menu, palette). -->
         <label
           class="glass relative inline-flex cursor-pointer items-center gap-1.5 rounded-full py-1 pl-2.5 pr-2 font-mono text-xs font-medium text-ink-soft transition-colors duration-200 focus-within:text-ink hover:text-ink"
           :title="`Display currency: ${displayCurrency} — amounts are converted`"
@@ -159,7 +176,7 @@ const isFresh = computed(
             aria-label="Display currency"
           >
             <option v-for="o in CURRENCY_OPTIONS" :key="o.code" :value="o.code">
-              {{ o.symbol }} {{ o.code }} · {{ o.label }}
+              {{ o.flag }} {{ o.symbol }} {{ o.code }}
             </option>
           </select>
           <ChevronDown
@@ -167,37 +184,60 @@ const isFresh = computed(
             aria-hidden="true"
           />
         </label>
+
+        <!-- Thousands preview: reflects the active currency's own grouping
+             style (period vs comma, symbol placement) at a glance. Wraps onto
+             its own centered line on narrow screens via the parent's flex-wrap. -->
+        <span class="font-mono text-[0.65rem] text-ink-faint" aria-hidden="true">
+          e.g. {{ thousandsPreview }}
+        </span>
       </div>
 
       <div v-if="pending" class="skeleton mx-auto mt-3 h-16 w-72 rounded-2xl" />
       <p
         v-else
-        class="mt-2 font-display text-6xl font-bold tracking-tight text-ink tnum sm:text-7xl"
+        class="mt-4 font-display text-6xl font-bold tracking-tight text-ink tnum sm:mt-2 sm:text-7xl"
       >
         {{ formatMoney(animatedTotal) }}
       </p>
 
       <!-- Fresh account (post-onboarding, zero entries ever): swap the empty
-           delta/pace lines for a guided "press N" prompt. The whole prompt is
-           one big button so mouse/touch users aren't left out of the shortcut. -->
+           delta/pace lines for a guided prompt. The whole card is one big
+           button so mouse/touch users aren't left out of the shortcut.
+           Below sm there's no keyboard, so the "N" keycap and its copy give
+           way to a hint pointing at the dock's floating + button instead —
+           this card still works as a tap target either way. -->
       <div v-if="!pending && stats && isFresh" class="mt-6 flex justify-center">
         <button
           type="button"
           class="group flex items-center gap-4 rounded-2xl border border-dashed border-edge/20 px-6 py-4 text-left transition-colors duration-200 hover:border-positive/50"
           @click="openQuickAdd()"
         >
+          <!-- Desktop: pulsing "N" keycap — the actual keyboard shortcut. -->
           <span
-            class="key-hint relative grid h-12 w-12 shrink-0 place-items-center rounded-xl border border-black/10 bg-white font-mono text-xl font-bold text-ink shadow-sm dark:border-white/15 dark:bg-zinc-900"
+            class="key-hint relative hidden h-12 w-12 shrink-0 place-items-center rounded-xl border border-black/10 bg-white font-mono text-xl font-bold text-ink shadow-sm dark:border-white/15 dark:bg-zinc-900 sm:grid"
             aria-hidden="true"
           >
             N
           </span>
+          <!-- Mobile: no keyboard exists, so mirror the dock's own +
+               button (same shape/color) to point at it instead. -->
+          <span
+            class="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-emerald-600 text-white shadow-sm sm:hidden"
+            aria-hidden="true"
+          >
+            <Plus class="h-5 w-5" aria-hidden="true" />
+          </span>
           <span>
-            <span class="block font-medium text-ink">
+            <span class="hidden font-medium text-ink sm:block">
               Press <span class="font-mono font-bold">N</span> to log your first expense
             </span>
+            <span class="block font-medium text-ink sm:hidden">
+              Tap <span class="font-bold">+</span> below to log your first expense
+            </span>
             <span class="block text-sm text-ink-faint">
-              or click here — it takes about ten seconds
+              <span class="hidden sm:inline">or click here — it takes about ten seconds</span>
+              <span class="sm:hidden">or tap here — it takes about ten seconds</span>
             </span>
           </span>
         </button>
@@ -326,7 +366,29 @@ const isFresh = computed(
 
       <!-- ── Budget rings ───────────────────────────────────────────── -->
       <section class="glass-card animate-rise mt-4 p-6" style="animation-delay: 0.32s">
-        <p class="eyebrow">Budgets · {{ monthLabel }}</p>
+        <div class="flex items-center justify-between gap-3">
+          <p class="eyebrow">Budgets · {{ monthLabel }}</p>
+          <div class="flex items-center gap-3">
+            <button
+              type="button"
+              class="inline-flex items-center gap-1 text-xs font-semibold text-ink-faint
+                transition-colors hover:text-ink"
+              @click="manageCategoriesOpen = true"
+            >
+              <Settings class="h-3.5 w-3.5" aria-hidden="true" />
+              Manage
+            </button>
+            <button
+              type="button"
+              class="inline-flex items-center gap-1 text-xs font-semibold text-accent-strong
+                transition-colors hover:text-ink"
+              @click="addCategoryModalOpen = true"
+            >
+              <Plus class="h-3.5 w-3.5" aria-hidden="true" />
+              Add category
+            </button>
+          </div>
+        </div>
         <WidgetBoundary label="The budget rings widget">
           <SkeletonChart v-if="pending" variant="rings" class="mt-5" />
           <ClientOnly v-else>
@@ -441,6 +503,8 @@ const isFresh = computed(
       />
       <!-- Unskippable: shows until a new user sets their monthly budget. -->
       <WelcomeModal v-if="needsOnboarding" @saved="onBudgetSaved" />
+      <AddCategoryModal :open="addCategoryModalOpen" @close="addCategoryModalOpen = false" />
+      <ManageCategoriesModal :open="manageCategoriesOpen" @close="manageCategoriesOpen = false" />
     </ClientOnly>
   </div>
 </template>

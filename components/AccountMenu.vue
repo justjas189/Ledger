@@ -114,7 +114,7 @@ async function signOut() {
         <!-- Currency shortcut: one row of code chips, active one filled -->
         <div class="px-3 pb-1.5 pt-2">
           <p class="eyebrow mb-1.5">Currency</p>
-          <div class="grid grid-cols-4 gap-1" role="group" aria-label="Display currency">
+          <div class="grid grid-cols-5 gap-1" role="group" aria-label="Display currency">
             <button
               v-for="o in CURRENCY_OPTIONS"
               :key="o.code"

@@ -34,7 +34,7 @@ function isTypingTarget(target: EventTarget | null): boolean {
 }
 
 function onKeydown(e: KeyboardEvent) {
-  if (e.key.toLowerCase() !== 'n') return
+  if (e.key?.toLowerCase() !== 'n') return
   if (e.ctrlKey || e.metaKey || e.altKey) return // leave browser shortcuts alone
   if (isTypingTarget(e.target)) return
   // Don't open on top of an already-open dialog (edit drawer, delete confirm…).
@@ -76,11 +76,11 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
 
     <!-- ── Floating brand chip + month ──────────────────────────────── -->
     <header
-      class="pointer-events-none fixed inset-x-0 z-40 flex items-center justify-between px-4 top-[calc(1rem+env(safe-area-inset-top))] sm:px-6 sm:top-[calc(1.5rem+env(safe-area-inset-top))]"
+      class="flex items-center justify-between px-4 pt-[calc(1rem+env(safe-area-inset-top))] sm:px-6 sm:pt-[calc(1.5rem+env(safe-area-inset-top))]"
     >
       <NuxtLink
         to="/"
-        class="glass pointer-events-auto flex items-center gap-2.5 rounded-full py-2 pl-3 pr-4 transition-colors duration-200 hover:border-black/15 dark:hover:border-white/20"
+        class="glass flex items-center gap-2.5 rounded-full py-2 pl-3 pr-4 transition-colors duration-200 hover:border-black/15 dark:hover:border-white/20"
       >
         <!-- Inlined logo.svg: the shield keeps its static brand greens; the
              wordmark uses currentColor so text-ink flips it per theme. -->
@@ -112,7 +112,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
         <ClientOnly>
           <span
             v-if="streakLoaded"
-            class="glass pointer-events-auto flex items-center gap-1.5 rounded-full px-3 py-2 font-mono text-xs tnum"
+            class="glass flex items-center gap-1.5 rounded-full px-3 py-2 font-mono text-xs tnum"
             :class="streak > 0 ? 'text-ink-soft' : 'text-ink-faint'"
             :title="streakTitle"
             :aria-label="streakTitle"
@@ -140,7 +140,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
     <main
       id="main-content"
       tabindex="-1"
-      class="relative mx-auto w-full max-w-6xl px-4 pb-[calc(9rem+env(safe-area-inset-bottom))] pt-24 outline-none transition-all duration-500 [transition-timing-function:cubic-bezier(0.32,0.72,0,1)] sm:px-6 sm:pt-28"
+      class="relative mx-auto w-full max-w-6xl px-4 pb-[calc(9rem+env(safe-area-inset-bottom))] pt-6 outline-none transition-all duration-500 [transition-timing-function:cubic-bezier(0.32,0.72,0,1)] sm:px-6 sm:pt-8"
       :class="stageDimmed && 'scale-[0.98] opacity-70 blur-[4px]'"
     >
       <slot />
@@ -148,11 +148,17 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
       <footer class="mt-16">
         <div class="hairline" />
         <p class="mt-5 text-center font-mono text-xs text-ink-faint">
-          Vaulted · Secure Today. Empower Tomorrow. · press
-          <kbd class="rounded-md border border-black/10 bg-black/5 px-1.5 py-0.5 font-mono dark:border-white/15 dark:bg-white/5">N</kbd>
-          to add an expense ·
-          <kbd class="rounded-md border border-black/10 bg-black/5 px-1.5 py-0.5 font-mono dark:border-white/15 dark:bg-white/5">Ctrl K</kbd>
-          for commands
+          Vaulted · Secure Today. Empower Tomorrow.
+          <!-- Keyboard shortcuts are meaningless on a touch device (no
+               keyboard), so they're entirely absent below sm — not just
+               visually hidden text a screen reader would still announce. -->
+          <span class="hidden sm:inline">
+            · press
+            <kbd class="rounded-md border border-black/10 bg-black/5 px-1.5 py-0.5 font-mono dark:border-white/15 dark:bg-white/5">N</kbd>
+            to add an expense ·
+            <kbd class="rounded-md border border-black/10 bg-black/5 px-1.5 py-0.5 font-mono dark:border-white/15 dark:bg-white/5">Ctrl K</kbd>
+            for commands
+          </span>
         </p>
       </footer>
     </main>

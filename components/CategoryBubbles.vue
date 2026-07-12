@@ -20,6 +20,7 @@ const props = defineProps<{
 
 const { formatMoney } = useFormatters()
 const { categoryColor, withAlpha } = useCategoryColors()
+const { resolveIcon, getCategoryIcon } = useCategoryIcons()
 
 interface Bubble {
   x: number
@@ -191,10 +192,22 @@ const bubbleSummary = computed(() => {
         class="flex items-center gap-1.5 rounded-full border border-edge/10 bg-edge/5 px-2.5 py-1 text-xs"
       >
         <span
-          class="h-2 w-2 shrink-0 rounded-full"
-          :style="{ backgroundColor: b.hue }"
+          class="grid h-5 w-5 shrink-0 place-items-center rounded-full"
+          :style="{ backgroundColor: withAlpha(b.hue, 0.16) }"
           aria-hidden="true"
-        />
+        >
+          <component
+            :is="resolveIcon(b.seg.icon) ?? resolveIcon(getCategoryIcon(b.seg.name))"
+            v-if="resolveIcon(b.seg.icon) ?? resolveIcon(getCategoryIcon(b.seg.name))"
+            class="h-3 w-3"
+            :style="{ color: b.hue }"
+          />
+          <span
+            v-else
+            class="inline-block h-2 w-2 rounded-full"
+            :style="{ backgroundColor: b.hue }"
+          />
+        </span>
         <span class="font-medium text-ink-soft">{{ b.seg.name }}</span>
         <span class="font-mono text-ink-faint tnum">{{ formatMoney(b.seg.total) }}</span>
       </li>

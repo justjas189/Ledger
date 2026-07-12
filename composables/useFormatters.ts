@@ -12,14 +12,16 @@
 export function useFormatters() {
   const { active: displayCurrency, convert } = useCurrency()
 
-  /** Base-USD 1234.5 -> "$1,234.50", "₱71,601.00", "1.135,58 €", … */
-  const formatMoney = (amount: number) =>
-    new Intl.NumberFormat(CURRENCY_LOCALES[displayCurrency.value], {
+  /** Base-USD 1234.5 -> "$1,234.50", "₱71,601.00", "1.135,58 €", "Rp 22.221.000", … */
+  const formatMoney = (amount: number) => {
+    const digits = CURRENCY_FRACTION_DIGITS[displayCurrency.value]
+    return new Intl.NumberFormat(CURRENCY_LOCALES[displayCurrency.value], {
       style: 'currency',
       currency: displayCurrency.value,
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
+      minimumFractionDigits: digits,
+      maximumFractionDigits: digits
     }).format(convert(amount))
+  }
 
   /** Base-USD 1234.5 -> "$1.2K" — for chart axes where full precision is noise. */
   const formatMoneyCompact = (amount: number) =>
@@ -29,6 +31,22 @@ export function useFormatters() {
       notation: 'compact',
       maximumFractionDigits: 1
     }).format(convert(amount))
+
+  /**
+   * Like formatMoney, but skips the base-USD conversion — formats `amount` as
+   * literal units of the active currency. Used to preview a currency's own
+   * locale style (grouping/decimal separators, symbol placement) next to the
+   * picker, e.g. formatMoneyLiteral(1000) -> "$1,000.00" or "Rp1.000".
+   */
+  const formatMoneyLiteral = (amount: number) => {
+    const digits = CURRENCY_FRACTION_DIGITS[displayCurrency.value]
+    return new Intl.NumberFormat(CURRENCY_LOCALES[displayCurrency.value], {
+      style: 'currency',
+      currency: displayCurrency.value,
+      minimumFractionDigits: digits,
+      maximumFractionDigits: digits
+    }).format(amount)
+  }
 
   /** ISO string -> "3 Jul 2026" */
   const formatDate = (iso: string | Date) => {
@@ -60,6 +78,7 @@ export function useFormatters() {
   return {
     formatMoney,
     formatMoneyCompact,
+    formatMoneyLiteral,
     formatDate,
     formatDateInput,
     formatMonthLabel,

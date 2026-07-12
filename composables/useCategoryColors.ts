@@ -1,13 +1,12 @@
 // Category → colour, the banking-app way.
 // Each spending category gets one distinct, recognisable hue (Transport is
 // always blue, Groceries always green, Dining always orange …) so transaction
-// types can be told apart at a glance. The mapping is keyed on the category
-// NAME rather than the database colour, because the seeded colours are muted
-// near-neutrals; the database value stays as the fallback for names we don't
-// recognise.
+// types can be told apart at a glance.
 //
-// Hues are Tailwind 500-step values — saturated enough to read on the dark
-// surface, dark enough to hold on the light one.
+// UPDATED LOGIC: 
+// The user's explicit Database color now takes priority. If a custom color is 
+// missing or invalid, we fall back to these hardcoded recognizable hues based on the name.
+
 const CATEGORY_HUES: Record<string, string> = {
   transport: '#3B82F6', // blue-500
   groceries: '#22C55E', // green-500
@@ -17,8 +16,6 @@ const CATEGORY_HUES: Record<string, string> = {
   shopping: '#EC4899' // pink-500
 }
 
-// Looser keyword fallbacks, so renamed or future categories still land on a
-// sensible hue instead of the grey default.
 const KEYWORD_HUES: Array<[RegExp, string]> = [
   [/transport|transit|commute|fuel|gas|car|bus|train/, '#3B82F6'],
   [/grocer|market|supermarket/, '#22C55E'],
@@ -34,16 +31,28 @@ const KEYWORD_HUES: Array<[RegExp, string]> = [
 
 export function useCategoryColors() {
   /**
-   * Resolve a category's display colour: exact name match first, then keyword
-   * match, then the colour stored on the category itself.
+   * Resolve a category's display colour: 
+   * 1. Database custom color wins first.
+   * 2. Exact name match fallback.
+   * 3. Keyword regex match fallback.
+   * 4. Ultimate grey fallback.
    */
-  const categoryColor = (name: string, fallback = '#64748B'): string => {
+  const categoryColor = (name: string, dbColor?: string | null): string => {
+    // 1. PRIORITY: If a valid database color was passed in, use it immediately!
+    if (dbColor && dbColor.startsWith('#')) {
+      return dbColor
+    }
+
+    // 2 & 3. FALLBACK: If no DB color, check our banking-app keywords
     const key = name.trim().toLowerCase()
     if (CATEGORY_HUES[key]) return CATEGORY_HUES[key]
+    
     for (const [re, hue] of KEYWORD_HUES) {
       if (re.test(key)) return hue
     }
-    return fallback
+    
+    // 4. ULTIMATE FALLBACK
+    return '#64748B' 
   }
 
   /** "#3B82F6" + 0.16 -> "rgba(59, 130, 246, 0.16)" — for soft tinted fills. */

@@ -6,7 +6,7 @@
   "description": "Vaulted — a clean, light/dark FinTech expense tracker. Nuxt 3 + Prisma + PostgreSQL.",
   "scripts": {
     "dev": "nuxt dev --host",
-    "build": "nuxt build",
+    "build": "prisma generate && nuxt build",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
     "typecheck": "nuxt typecheck",
@@ -24,6 +24,8 @@
     "@prisma/client": "6.19.3",
     "lucide-vue-next": "^1.0.0",
     "nuxt": "3.21.8",
+    "openai": "^6.46.0",
+    "resend": "^6.17.2",
     "tesseract.js": "^7.0.0",
     "vue": "3.5.39",
     "zod": "4.4.3"

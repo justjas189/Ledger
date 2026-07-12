@@ -86,7 +86,7 @@ const moneyAmount = z.coerce
   .refine((n) => n <= 99999999.99, 'That amount is too large.')
 
 /** The display currencies we support, mirrored on the client (useCurrency). */
-export const CURRENCY_CODES = ['USD', 'PHP', 'EUR', 'GBP'] as const
+export const CURRENCY_CODES = ['USD', 'PHP', 'EUR', 'GBP', 'IDR'] as const
 
 // --- Settings --------------------------------------------------------------
 // The per-user monthly budget (base USD) and preferred display currency. Same
@@ -172,6 +172,61 @@ export type ContributionInput = z.infer<typeof contributionInputSchema>
 
 export function parseContributionInput(body: unknown): ContributionInput {
   return parseWithFieldErrors(contributionInputSchema, body)
+}
+
+// --- Categories ------------------------------------------------------------
+// `name` is capped well below what the bubble chart's canvas text-scaling can
+// comfortably fit — a long name should shrink gracefully, not force every
+// bubble to shrink with it. `color` must be a 6-digit hex, matching every
+// seeded default (e.g. "#0F766E"). `icon` is optional/nullable: there's no
+// icon picker in the UI yet, and useCategoryIcons() already falls back to the
+// colour dot for any name it doesn't recognise, so we only bound its length.
+const categoryName = z
+  .string()
+  .trim()
+  .min(1, 'Give the category a name.')
+  .max(24, 'Keep the name under 24 characters.')
+
+const categoryColor = z
+  .string()
+  .trim()
+  .regex(/^#[0-9a-fA-F]{6}$/, 'Choose a valid color.')
+
+const categoryIcon = z.string().trim().min(1).max(40).nullish().transform((v) => v ?? null)
+
+export const categoryInputSchema = z.object({
+  name: categoryName,
+  color: categoryColor,
+  icon: categoryIcon.optional()
+})
+
+export type CategoryInput = z.infer<typeof categoryInputSchema>
+
+export function parseCategoryInput(body: unknown): CategoryInput {
+  return parseWithFieldErrors(categoryInputSchema, body)
+}
+
+// --- AI categorization ------------------------------------------------------
+// Powers POST /api/categorize (NVIDIA NIM). `text` is a typed description or
+// a whole OCR'd receipt, bounded generously so it comfortably fits either, but
+// not unbounded — this caps token usage/cost per request. `categories` is the
+// user's OWN current category names (from useCategories on the client), each
+// already bounded to the same 24 chars enforced when a category is created
+// (see categoryName above); the array itself is capped so a pathological
+// payload can't inflate the prompt.
+const categorizeText = z.string().trim().min(1).max(3000)
+
+const categorizeCategories = z.array(z.string().trim().min(1).max(24)).max(50)
+
+export const categorizeInputSchema = z.object({
+  text: categorizeText,
+  categories: categorizeCategories
+})
+
+export type CategorizeInput = z.infer<typeof categorizeInputSchema>
+
+export function parseCategorizeInput(body: unknown): CategorizeInput {
+  return parseWithFieldErrors(categorizeInputSchema, body)
 }
 
 /**
